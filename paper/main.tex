@@ -1,0 +1,195 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1.15in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\input{macros}
+
+\title{Many powerful numbers between consecutive powers}
+\author{Scott D. Hughes}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Let $\kappa\ge2$ and let $h_\kappa(n)$ denote the number of $\kappa$-full integers in the open
+interval $(n^\kappa,(n+1)^\kappa)$. De Koninck and Luca, and De Koninck--Luca--Shparlinski, proved
+that $h_\kappa(n)\ge(\log n)^{1/3+o(1)}$ for infinitely many $n$. We show by a refinement of their
+method --- replacing a self-referential approximation condition by a fixed-tolerance application of
+Dirichlet's theorem, and choosing the auxiliary squarefree numbers as the divisors of a primorial ---
+that for every fixed $\kappa\ge2$,
+\[
+  h_\kappa(n)\ \gg_\kappa\ \frac{\log n}{\log\log n\,\log\log\log n}
+\]
+for infinitely many $n$. In particular, in Erd\H{o}s's question whether
+$h_2(n)\asymp(\log n)^{c\pm o(1)}$, any admissible exponent satisfies $c\ge1$.
+\end{abstract}
+
+\section{Introduction}
+
+An integer $m\ge1$ is \emph{$\kappa$-full} (for $\kappa=2$, \emph{powerful} or \emph{squarefull})
+if $p^\kappa\mid m$ for every prime $p\mid m$. Since the number of powerful integers up to $x$ is
+$\sim\frac{\zeta(3/2)}{\zeta(3)}\sqrt x$ \cite{BG58}, the interval $(n^2,(n+1)^2)$ contains on
+average about $\frac{\zeta(3/2)}{\zeta(3)}-1\approx1.17$ powerful numbers besides none being a
+perfect square. Erd\H{o}s asked (see \cite[Problem \#942]{BloomErdos}) for the maximal order of
+\[
+  h_\kappa(n):=\#\{m\in(n^\kappa,(n+1)^\kappa):\ m\ \text{is }\kappa\text{-full}\},
+\]
+and in particular whether there is a constant $c>0$ with $h_2(n)<(\log n)^{c+o(1)}$ for all $n$ and
+$h_2(n)>(\log n)^{c-o(1)}$ infinitely often.
+
+De Koninck and Luca \cite{DeLu04} proved $h_2(n)>\frac9{20}(\log n/\log\log n)^{1/3}$ for
+infinitely many $n$; De Koninck, Luca and Shparlinski \cite{DKLS05} extended this to every fixed
+$\kappa\ge2$ (indeed uniformly in $\kappa=\kappa(N)$ growing slowly); we are not aware of a previous
+improvement of these lower bounds. We prove:
+
+\begin{theorem}\label{thm:main}
+For every fixed $\kappa\ge2$ there is $c_\kappa>0$ such that
+\[
+  h_\kappa(n)\ \ge\ c_\kappa\,\frac{\log n}{\log\log n\,\log\log\log n}
+\]
+for infinitely many positive integers $n$.
+\end{theorem}
+
+Thus any exponent $c$ as in Erd\H{o}s's question satisfies $c\ge1$. The proof refines the method of
+\cite{DeLu04,DKLS05} in two ways. First, those papers impose on the common denominator $q$ a
+self-referential approximation condition ($|\alpha_j-r_j/q|\le q^{-1-1/2\ell}$ for all $j$, with $q$
+minimal), whose analysis requires Roth's theorem and yields $\log n\asymp\ell^3\log\ell$ for $\ell$
+constructed $\kappa$-full numbers; but the placement of the constructed numbers in the target
+interval only requires the \emph{fixed} tolerance $\|q\alpha_j\|\le c/(Dd_j^{1/\kappa})$, which
+Dirichlet's theorem supplies directly with $\log q\ll\ell\log(D^{2})$, and Roth's theorem is not
+needed. Second, the auxiliary squarefree numbers $d_j$ need not be the first $2\ell$ squarefree
+integers with $D=\prod_jd_j$: it suffices that each $d_j$ divides $D$, so choosing $D$ to be a
+primorial and the $d_j$ its squarefree divisors reduces $\log D$ from $\Theta(\ell\log\ell)$ to
+$O(\log\ell\log\log\ell)$, and the available upper bound for $\log n$ to $O_\kappa(\ell\log\ell\log\log\ell)$.
+
+\section{Proof of Theorem~\ref{thm:main}}
+
+Fix $\kappa\ge2$ and a large integer $\ell$. Let $h$ be minimal with $2^h-1\ge2\ell$, so
+$h\asymp\log\ell$, and let
+\[
+  D=p_1p_2\cdots p_h
+\]
+be the product of the first $h$ primes; by the prime number theorem
+$\log D\asymp h\log h\asymp\log\ell\,\log\log\ell$. Let $d_1<\dots<d_{2\ell}$ be any $2\ell$ of the
+$2^h-1$ squarefree divisors $d>1$ of $D$, and set $\alpha_j=d_j^{-1/\kappa}$, an irrational number,
+for $j=1,\dots,2\ell$.
+
+\subsection*{Choice of $q$}
+By the box principle (Dirichlet's theorem on simultaneous approximation, with the per-coordinate
+tolerances $\delta_j:=\dfrac{1}{2^{\kappa+1}\kappa\,Dd_j^{1/\kappa}}$): subdividing
+$[0,1)^{2\ell}$ into $\prod_j\lceil\delta_j^{-1}\rceil$ boxes and considering the points
+$(\{t\alpha_1\},\dots,\{t\alpha_{2\ell}\})$ for $0\le t\le\prod_j\lceil\delta_j^{-1}\rceil$, there
+exist $t_1>t_2$ in the same box; $q:=t_1-t_2$ satisfies
+\begin{equation}\label{eq:dir}
+  1\le q\le\prod_{j=1}^{2\ell}\lceil\delta_j^{-1}\rceil
+  \le\bigl(4\kappa2^{\kappa}D^{1+1/\kappa}\bigr)^{2\ell},
+  \qquad
+  \|q\alpha_j\|\le\delta_j\quad(j=1,\dots,2\ell).
+\end{equation}
+In particular $\log q\ll_\kappa\ell\log D\ll\ell\log\ell\,\log\log\ell$.
+
+Let $r_j$ be the nearest integer to $q\alpha_j$ and $\varepsilon_j=q\alpha_j-r_j$, so
+$|\varepsilon_j|\le\delta_j$ and $\varepsilon_j\ne0$ (each $\alpha_j=d_j^{-1/\kappa}$ is irrational,
+as $d_j>1$ is squarefree). Note $r_j\ge1$: if $r_j=0$ then
+$\|q\alpha_j\|=q\alpha_j\ge\alpha_j=d_j^{-1/\kappa}>\delta_j$, a contradiction.
+
+\subsection*{The constructed numbers}
+Set $n=Dq$ and
+\[
+  m_j=d_j\,D^\kappa r_j^\kappa\qquad(j=1,\dots,2\ell).
+\]
+Each $m_j$ is $\kappa$-full: every prime of $d_j$ divides $D$, hence appears in $m_j$ with exponent
+at least $\kappa+1$, while primes of $D$ or of $r_j$ appear with exponent at least $\kappa$. The
+$m_j$ are pairwise distinct: comparing $p$-adic valuations modulo $\kappa$ in
+$d_ir_i^\kappa=d_jr_j^\kappa$ forces $v_p(d_i)=v_p(d_j)$ for all $p$, i.e.\ $d_i=d_j$.
+
+\subsection*{Placement}
+Since $d_j\alpha_j^\kappa=1$,
+\[
+  d_jr_j^\kappa=d_j(q\alpha_j-\varepsilon_j)^\kappa
+  =q^\kappa-\kappa q^{\kappa-1}d_j^{1/\kappa}\varepsilon_j+E_j,
+  \qquad
+  |E_j|\le 2^\kappa q^{\kappa-2}d_j^{2/\kappa}\varepsilon_j^2\,\kappa^2 ,
+\]
+say, for $q$ large. Hence
+\[
+  m_j-n^\kappa=D^\kappa\bigl(d_jr_j^\kappa-q^\kappa\bigr)
+  =-\kappa D^\kappa q^{\kappa-1}d_j^{1/\kappa}\varepsilon_j+D^\kappa E_j .
+\]
+Write $M_j:=\kappa D^\kappa q^{\kappa-1}d_j^{1/\kappa}|\varepsilon_j|$ for the absolute value of the
+main term. With $|\varepsilon_j|\le\delta_j=\bigl(2^{\kappa+1}\kappa Dd_j^{1/\kappa}\bigr)^{-1}$ we
+get $M_j\le 2^{-(\kappa+1)}D^{\kappa-1}q^{\kappa-1}=2^{-(\kappa+1)}n^{\kappa-1}$, while the error is
+dominated termwise:
+\[
+  \frac{D^\kappa|E_j|}{M_j}
+  \le\frac{2^\kappa\kappa^2\,q^{\kappa-2}d_j^{2/\kappa}\varepsilon_j^2}
+         {\kappa\,q^{\kappa-1}d_j^{1/\kappa}|\varepsilon_j|}
+  =\frac{2^\kappa\kappa\,d_j^{1/\kappa}|\varepsilon_j|}{q}
+  \le\frac{1}{2Dq}\le\frac12 .
+\]
+Hence $\tfrac12M_j\le|m_j-n^\kappa|\le\tfrac32M_j$; since $\varepsilon_j\ne0$ this gives
+\[
+  0<|m_j-n^\kappa|\le\tfrac32\cdot2^{-(\kappa+1)}n^{\kappa-1}<n^{\kappa-1}
+  \le\min\bigl((n+1)^\kappa-n^\kappa,\ n^\kappa-(n-1)^\kappa\bigr),
+\]
+and the sign of $m_j-n^\kappa$ equals that of the main term, i.e.\ is opposite to that of
+$\varepsilon_j$. Therefore each $m_j$ lies in
+$(n^\kappa,(n+1)^\kappa)$ if $\varepsilon_j<0$, and in $((n-1)^\kappa,n^\kappa)$ if
+$\varepsilon_j>0$. By the pigeonhole principle, at least $\ell$ of the $2\ell$ numbers $m_j$ lie in
+a single one of these two intervals; setting $N=n$ in the first case and $N=n-1$ in the second,
+\[
+  h_\kappa(N)\ \ge\ \ell .
+\]
+
+\subsection*{Conclusion}
+Let $X=\log N$ and $f(x)=x/(\log x\,\log\log x)$; one checks $f$ is increasing for $x\ge16$. We have
+shown $X\le Y_\ell:=C_\kappa\,\ell\log\ell\,\log\log\ell$ with $C_\kappa\ge1$, and $X\to\infty$ as
+$\ell\to\infty$ (note $N\ge D-1$). Since $Y_\ell\ge\ell$, we have $\log Y_\ell\ge\log\ell$ and
+$\log\log Y_\ell\ge\log\log\ell$, so monotonicity gives, for $\ell$ large,
+\[
+  f(X)\ \le\ f(Y_\ell)
+  =\frac{C_\kappa\,\ell\,\log\ell\,\log\log\ell}{\log Y_\ell\,\log\log Y_\ell}
+  \ \le\ C_\kappa\,\ell,
+  \qquad\text{i.e.}\qquad
+  \ell\ \gg_\kappa\ \frac{\log N}{\log\log N\,\log\log\log N}.
+\]
+Letting $\ell\to\infty$ produces infinitely many such $N$.\qed
+
+\begin{remark}
+The construction is completely explicit and was verified computationally in small cases. For
+$\kappa=2$, $h=2$, using all three nontrivial divisors $2,3,6$ of $D=6$: the smallest admissible $q$ is $485$, giving $N=2909$,
+and indeed two powerful numbers lie in $(2909^2,2910^2)$. For $h=3$ ($D=30$, all seven divisors
+$2,3,5,6,10,15,30$): a lattice-reduction search finds $q$ with about $26$ decimal digits for which
+five of the seven constructed numbers lie in $(n^2,(n+1)^2)$ (and two in the lower interval).
+The arithmetic core of the construction --- the $\kappa$-fullness and distinctness of the numbers
+$d_jD^\kappa r_j^\kappa$, and the instance above ($8467200=3\cdot6^2\cdot280^2$ and $8468064=6\cdot6^2\cdot198^2$, both powerful, both
+in $(2909^2,2910^2)$) --- has been formally verified in Lean~4/Mathlib; the certificate is available
+at \url{https://github.com/scottdhughes/erdos942}.
+\end{remark}
+
+\begin{remark}
+The bottleneck is the box principle: tolerance $e^{-\Theta(\log\ell\log\log\ell)}$ in dimension
+$2\ell$ costs $\log q\asymp\ell\log\ell\log\log\ell$, so Theorem~\ref{thm:main} may be close to the
+natural limit of this Dirichlet/primorial construction; removing the remaining
+$\log\log N\,\log\log\log N$ factor appears to require either simultaneous approximation of quality
+beyond Dirichlet's for the specific algebraic vector $(d_j^{-1/\kappa})_j$, or a different
+construction.
+\end{remark}
+
+\begin{thebibliography}{9}
+\bibitem{BG58} P.~Bateman and E.~Grosswald, On a theorem of Erd\H{o}s and Szekeres,
+\emph{Illinois J. Math.} \textbf{2} (1958), 88--98.
+\bibitem{BloomErdos} T.~F. Bloom, \emph{Erd\H{o}s Problem \#942},
+\url{https://www.erdosproblems.com/942}.
+\bibitem{DeLu04} J.-M. De~Koninck and F.~Luca, Sur la proximit\'e des nombres puissants,
+\emph{Acta Arith.} \textbf{114} (2004), 149--157.
+\bibitem{DKLS05} J.-M. De~Koninck, F.~Luca and I.~E. Shparlinski, Powerful numbers in short
+intervals, \emph{Bull. Austral. Math. Soc.} \textbf{71} (2005), 11--16.
+\end{thebibliography}
+
+\bigskip
+\noindent\textsc{Scott D. Hughes, Independent Researcher}\\
+\noindent\textit{Email address:} \texttt{v@deltagray.com}
+
+\end{document}
