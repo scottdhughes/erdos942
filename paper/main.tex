@@ -162,10 +162,14 @@ $\kappa=2$, $h=2$, using all three nontrivial divisors $2,3,6$ of $D=6$: the sma
 and indeed two powerful numbers lie in $(2909^2,2910^2)$. For $h=3$ ($D=30$, all seven divisors
 $2,3,5,6,10,15,30$): a lattice-reduction search finds $q$ with about $26$ decimal digits for which
 five of the seven constructed numbers lie in $(n^2,(n+1)^2)$ (and two in the lower interval).
-The arithmetic core of the construction --- the $\kappa$-fullness and distinctness of the numbers
-$d_jD^\kappa r_j^\kappa$, and the instance above ($8467200=3\cdot6^2\cdot280^2$ and $8468064=6\cdot6^2\cdot198^2$, both powerful, both
-in $(2909^2,2910^2)$) --- has been formally verified in Lean~4/Mathlib; the certificate is available
-at \url{https://github.com/scottdhughes/erdos942}.
+For $\kappa=2$, the components of the construction have been formalized in Lean~4/Mathlib (standard
+axioms, no \texttt{sorry}): the $\kappa$-fullness and distinctness of the numbers $d_jD^\kappa r_j^\kappa$
+(with the instance above, $8467200=3\cdot6^2\cdot280^2$ and $8468064=6\cdot6^2\cdot198^2$, both powerful
+and both in $(2909^2,2910^2)$), the simultaneous box principle, and the window placement above. Assembled
+over a family of $2\ell$ primes these give a machine-checked proof that $h(n)$ is unbounded; the
+asymptotic counting that yields the explicit rate of Theorem~\ref{thm:main} (and with it the primorial
+refinement) is not formalized, as it would require an upper bound on the $n$th prime not presently
+available in Mathlib. The certificate is available at \url{https://github.com/scottdhughes/erdos942}.
 \end{remark}
 
 \begin{remark}
