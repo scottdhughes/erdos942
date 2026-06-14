@@ -40,7 +40,7 @@ theorem construction_injective (κ d₁ d₂ r₁ r₂ : ℕ) (hκ : 2 ≤ κ)
     exact Nat.mod_eq_of_lt ( show d₁.factorization p < κ from lt_of_le_of_lt ( Nat.le_of_lt_succ <| Nat.lt_succ_of_le <| Nat.le_of_not_lt fun h => by have := hd₁.natFactorization_le_one p; linarith ) hκ ) ▸ Nat.mod_eq_of_lt ( show d₂.factorization p < κ from lt_of_le_of_lt ( Nat.le_of_lt_succ <| Nat.lt_succ_of_le <| Nat.le_of_not_lt fun h => by have := hd₂.natFactorization_le_one p; linarith ) hκ ) ▸ this;
   -- Hence by Nat.eq_iff_factorization_eq (or Nat.factorization_inj) for positive d₁ d₂, d₁ = d₂.
   have h_eq : d₁ = d₂ := by
-    rw [ ← Nat.factorization_prod_pow_eq_self hd₁.ne_zero, ← Nat.factorization_prod_pow_eq_self hd₂.ne_zero ];
+    rw [ ← Nat.prod_factorization_pow_eq_self hd₁.ne_zero, ← Nat.prod_factorization_pow_eq_self hd₂.ne_zero ];
     congr 1 with p ; by_cases hp : Nat.Prime p <;> aesop;
   cases κ <;> aesop
 

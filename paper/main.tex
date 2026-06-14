@@ -162,14 +162,15 @@ $\kappa=2$, $h=2$, using all three nontrivial divisors $2,3,6$ of $D=6$: the sma
 and indeed two powerful numbers lie in $(2909^2,2910^2)$. For $h=3$ ($D=30$, all seven divisors
 $2,3,5,6,10,15,30$): a lattice-reduction search finds $q$ with about $26$ decimal digits for which
 five of the seven constructed numbers lie in $(n^2,(n+1)^2)$ (and two in the lower interval).
-For $\kappa=2$, the components of the construction have been formalized in Lean~4/Mathlib (standard
-axioms, no \texttt{sorry}): the $\kappa$-fullness and distinctness of the numbers $d_jD^\kappa r_j^\kappa$
-(with the instance above, $8467200=3\cdot6^2\cdot280^2$ and $8468064=6\cdot6^2\cdot198^2$, both powerful
-and both in $(2909^2,2910^2)$), the simultaneous box principle, and the window placement above. Assembled
-over a family of $2\ell$ primes these give a machine-checked proof that $h(n)$ is unbounded; the
-asymptotic counting that yields the explicit rate of Theorem~\ref{thm:main} (and with it the primorial
-refinement) is not formalized, as it would require an upper bound on the $n$th prime not presently
-available in Mathlib. The certificate is available at \url{https://github.com/scottdhughes/erdos942}.
+For $\kappa=2$, Theorem~\ref{thm:main} has been formalized and machine-checked in Lean~4/Mathlib,
+with no \texttt{sorry} and only the standard axioms. The development certifies the simultaneous box
+principle, the $\kappa$-fullness and distinctness of the constructed numbers $d_jD^2r_j^2$ (including
+the instance $8467200=3\cdot6^2\cdot280^2$ and $8468064=6\cdot6^2\cdot198^2$, both powerful and both
+in $(2909^2,2910^2)$), the window placement, the count $2^{\omega(D)}-1$ of squarefree divisors of the
+primorial, and the size bound $\log\!\prod_{i<h}p_i\ll h\log h$ --- which uses the Chebyshev lower
+bound $\pi(x)\gg x/\log x$ to bound the $h$th prime by $O(h\log h)$ --- together with the pigeonhole
+count and the final inversion, yielding $c\,\log n/(\log\log n\,\log\log\log n)\le h_2(n)$ for
+infinitely many $n$. The certificate is available at \url{https://github.com/scottdhughes/erdos942}.
 \end{remark}
 
 \begin{remark}

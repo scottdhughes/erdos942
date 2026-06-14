@@ -1,5 +1,6 @@
 import Erdos942.Core
 import Erdos942.Construction
+import Erdos942.Rate
 
 /-!
 # Axiom audit
@@ -18,3 +19,11 @@ Expected output: every theorem depends only on `propext`, `Classical.choice`,
 #print axioms box_principle_simultaneous       -- simultaneous Dirichlet box principle
 #print axioms placement_kfull_window           -- window placement of the constructed numbers
 #print axioms powerful_count_unbounded         -- h(n) is unbounded
+
+-- The quantitative rate (paper Theorem 1.1, κ=2)
+#print axioms nth_prime_upper                  -- p_h ≪ h log h, from Chebyshev.pi_ge
+#print axioms box_principle_quantitative       -- box principle with denominator bound
+#print axioms squarefree_many_divisors         -- 2^h − 1 squarefree divisors
+#print axioms rate_inversion                   -- inversion of the size bound
+#print axioms log_primorial_le                 -- log(primorial) ≪ h log h
+#print axioms powerful_count_rate              -- h(n) ≫ log n/(loglog n · logloglog n) i.o.
