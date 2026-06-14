@@ -423,75 +423,559 @@ theorem squarefree_prod_primes (s : Finset ℕ) (hs : ∀ p ∈ s, p.Prime) :
     exact (Nat.coprime_primes hap (hs p (Finset.mem_insert_of_mem hp))).mpr
       (by rintro rfl; exact ha hp)
 
-/-- Logarithmic bound on the box-principle denominator `q`. -/
-theorem log_q_bound (D : ℕ) (hD1 : 1 ≤ D) (S : Finset ℕ)
+/- ===== GENERAL-κ placement machinery (from placement_general.lean) ===== -/
+open scoped BigOperators
+open Real Finset
+
+noncomputable def alphaG (d κ : ℕ) : ℝ := (d : ℝ) ^ (-(1 : ℝ) / (κ : ℝ))
+noncomputable def rG (d κ q : ℕ) : ℕ := (round ((q : ℝ) * alphaG d κ)).toNat
+noncomputable def epsG (d κ q : ℕ) : ℝ := (q : ℝ) * alphaG d κ - (round ((q : ℝ) * alphaG d κ) : ℤ)
+
+/-- β = d^{1/κ}. -/
+noncomputable def betaG (d κ : ℕ) : ℝ := (d : ℝ) ^ ((1 : ℝ) / (κ : ℝ))
+
+/-! ### Basic facts about α and β -/
+
+theorem betaG_pos (κ d : ℕ) (hd2 : 2 ≤ d) : 0 < betaG d κ := by
+  unfold betaG; positivity
+
+theorem alphaG_pos (κ d : ℕ) (hd2 : 2 ≤ d) : 0 < alphaG d κ := by
+  unfold alphaG; positivity
+
+theorem betaG_pow (κ d : ℕ) (hκ : 1 ≤ κ) (hd2 : 2 ≤ d) : betaG d κ ^ κ = (d : ℝ) := by
+  unfold betaG
+  rw [← Real.rpow_natCast ((d:ℝ) ^ ((1:ℝ)/(κ:ℝ))) κ, ← Real.rpow_mul (by positivity)]
+  rw [one_div, inv_mul_cancel₀ (by positivity : (κ:ℝ) ≠ 0), Real.rpow_one]
+
+theorem alpha_beta_eq (κ d : ℕ) (hd2 : 2 ≤ d) : alphaG d κ * betaG d κ = 1 := by
+  unfold alphaG betaG
+  rw [← Real.rpow_add (by positivity)]
+  rw [show (-(1:ℝ)/(κ:ℝ) + (1:ℝ)/(κ:ℝ)) = 0 by ring, Real.rpow_zero]
+
+theorem betaG_ge_one (κ d : ℕ) (hκ : 1 ≤ κ) (hd2 : 2 ≤ d) : 1 ≤ betaG d κ := by
+  unfold betaG
+  apply Real.one_le_rpow (by exact_mod_cast (by omega : 1 ≤ d))
+  positivity
+
+/-! ### Irrationality, hence ε ≠ 0 -/
+
+theorem betaG_irrational (κ d : ℕ) (hκ : 2 ≤ κ) (hd2 : 2 ≤ d) (hd : Squarefree d) :
+    Irrational (betaG d κ) := by
+  -- pick a prime p ∣ d
+  obtain ⟨p, hp, hpd⟩ := (Nat.exists_prime_and_dvd (by omega : d ≠ 1))
+  haveI : Fact p.Prime := ⟨hp⟩
+  have hbpow : betaG d κ ^ κ = ((d : ℤ) : ℝ) := by
+    rw [betaG_pow κ d (by omega) hd2]; push_cast; ring
+  have hd0 : (d : ℤ) ≠ 0 := by exact_mod_cast (by omega : d ≠ 0)
+  -- multiplicity of p in d is 1 (squarefree, p ∣ d)
+  have hmult : multiplicity (p : ℤ) (d : ℤ) = 1 := by
+    have hfin : FiniteMultiplicity (p : ℤ) (d : ℤ) := by
+      rw [Int.finiteMultiplicity_iff]
+      refine ⟨?_, hd0⟩
+      have h2 := hp.two_le
+      rw [Int.natAbs_natCast]
+      omega
+    rw [hfin.multiplicity_eq_iff]
+    refine ⟨?_, ?_⟩
+    · simpa using (Int.natCast_dvd_natCast.mpr hpd)
+    · -- p^2 does not divide d
+      intro hdvd
+      have hdvd' : (p * p : ℕ) ∣ d := by
+        have h2 : ((p * p : ℕ) : ℤ) ∣ (d : ℤ) := by push_cast at hdvd ⊢; ring_nf at hdvd ⊢; exact hdvd
+        exact_mod_cast h2
+      have := hd p hdvd'
+      rw [Nat.isUnit_iff] at this
+      exact hp.one_lt.ne' this
+  have hmodne : multiplicity (p : ℤ) (d : ℤ) % κ ≠ 0 := by
+    rw [hmult, Nat.one_mod_eq_one.mpr (by omega)]; omega
+  exact irrational_nrt_of_n_not_dvd_multiplicity κ hd0 p hbpow hmodne
+
+theorem alphaG_irrational (κ d : ℕ) (hκ : 2 ≤ κ) (hd2 : 2 ≤ d) (hd : Squarefree d) :
+    Irrational (alphaG d κ) := by
+  -- α = 1/β; if α rational then β = 1/α rational
+  have hb := betaG_irrational κ d hκ hd2 hd
+  have hab := alpha_beta_eq κ d hd2
+  have hbpos := betaG_pos κ d hd2
+  intro ⟨r, hr⟩
+  apply hb
+  refine ⟨r⁻¹, ?_⟩
+  have haα : alphaG d κ ≠ 0 := ne_of_gt (alphaG_pos κ d hd2)
+  have hrne : (r : ℝ) ≠ 0 := by rw [hr]; exact haα
+  -- β = 1/α
+  have hbinv : betaG d κ = 1 / alphaG d κ := by
+    rw [eq_div_iff haα, mul_comm]; exact hab
+  rw [hbinv, ← hr]
+  push_cast
+  rw [one_div]
+
+theorem epsG_ne_zero (κ d q : ℕ) (hκ : 2 ≤ κ) (hd2 : 2 ≤ d) (hd : Squarefree d) (hq : 1 ≤ q) :
+    epsG d κ q ≠ 0 := by
+  unfold epsG
+  intro h
+  -- then q * α = round, an integer; so α = round / q is rational
+  have hα := alphaG_irrational κ d hκ hd2 hd
+  have hqne : (q : ℝ) ≠ 0 := by exact_mod_cast (by omega : q ≠ 0)
+  apply hα
+  refine ⟨(round ((q:ℝ) * alphaG d κ) : ℚ) / (q : ℚ), ?_⟩
+  have heq : (q : ℝ) * alphaG d κ = (round ((q:ℝ) * alphaG d κ) : ℤ) := by linarith [h]
+  push_cast
+  rw [div_eq_iff hqne]
+  linarith [heq]
+
+/-! ### Binomial tail bound -/
+
+theorem binom_tail_bound (κ : ℕ) (hκ : 1 ≤ κ) (q s : ℝ) (hq : 1 ≤ q)
+    (hs1 : |s| ≤ 1) :
+    |(q - s) ^ κ - q ^ κ| ≤ (κ : ℝ) * q ^ (κ - 1) * |s| * 2 ^ κ := by
+  have hexp : (q - s) ^ κ = ∑ m ∈ range (κ + 1), q ^ m * (-s) ^ (κ - m) * (κ.choose m : ℝ) := by
+    rw [sub_eq_add_neg]; exact add_pow q (-s) κ
+  have hlast : ∑ m ∈ range (κ + 1), q ^ m * (-s) ^ (κ - m) * (κ.choose m : ℝ)
+      = (∑ m ∈ range κ, q ^ m * (-s) ^ (κ - m) * (κ.choose m : ℝ)) + q ^ κ := by
+    rw [Finset.sum_range_succ]; congr 1; simp
+  have hdiff : (q - s) ^ κ - q ^ κ = ∑ m ∈ range κ, q ^ m * (-s) ^ (κ - m) * (κ.choose m : ℝ) := by
+    rw [hexp, hlast]; ring
+  rw [hdiff]
+  refine le_trans (Finset.abs_sum_le_sum_abs _ _) ?_
+  have hterm : ∀ m ∈ range κ,
+      |q ^ m * (-s) ^ (κ - m) * (κ.choose m : ℝ)| ≤ q ^ (κ - 1) * |s| * 2 ^ κ := by
+    intro m hm
+    rw [mem_range] at hm
+    rw [abs_mul, abs_mul]
+    have h1 : |q ^ m| = q ^ m := abs_of_nonneg (by positivity)
+    have h2 : |(-s) ^ (κ - m)| = |s| ^ (κ - m) := by rw [abs_pow, abs_neg]
+    have h3 : |(κ.choose m : ℝ)| = (κ.choose m : ℝ) := abs_of_nonneg (by positivity)
+    rw [h1, h2, h3]
+    have hqm : q ^ m ≤ q ^ (κ - 1) := pow_le_pow_right₀ hq (by omega)
+    have hsm : |s| ^ (κ - m) ≤ |s| := by
+      have : |s| ^ (κ - m) ≤ |s| ^ 1 := pow_le_pow_of_le_one (abs_nonneg s) hs1 (by omega)
+      simpa using this
+    have hc : (κ.choose m : ℝ) ≤ 2 ^ κ := by
+      have hh := Nat.choose_le_two_pow (n := κ) (k := m)
+      have : (κ.choose m : ℝ) ≤ ((2 ^ κ : ℕ) : ℝ) := by exact_mod_cast hh
+      simpa using this
+    exact mul_le_mul (mul_le_mul hqm hsm (by positivity) (by positivity)) hc (by positivity) (by positivity)
+  calc ∑ m ∈ range κ, |q ^ m * (-s) ^ (κ - m) * (κ.choose m : ℝ)|
+      ≤ ∑ m ∈ range κ, q ^ (κ - 1) * |s| * 2 ^ κ := Finset.sum_le_sum hterm
+    _ = (κ : ℝ) * (q ^ (κ - 1) * |s| * 2 ^ κ) := by
+        rw [Finset.sum_const, Finset.card_range]; ring
+    _ = (κ : ℝ) * q ^ (κ - 1) * |s| * 2 ^ κ := by ring
+
+/-! ### round ≥ 1 -/
+
+theorem round_ge_one (κ D d q : ℕ) (hκ : 2 ≤ κ) (hD : 1 ≤ D) (hd2 : 2 ≤ d) (hq : 1 ≤ q)
+    (htol : |epsG d κ q| ≤ 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * betaG d κ)) :
+    1 ≤ round ((q : ℝ) * alphaG d κ) := by
+  by_contra hcon
+  push_neg at hcon
+  -- round ≤ 0.  But qα > 0 ⟹ round ≥ 0, so round = 0.
+  have hαpos := alphaG_pos κ d hd2
+  have hqαpos : 0 < (q : ℝ) * alphaG d κ := by
+    apply mul_pos; exact_mod_cast hq; exact hαpos
+  have hround_nonneg : 0 ≤ round ((q : ℝ) * alphaG d κ) := by
+    rw [round_eq]; apply Int.floor_nonneg.mpr; linarith
+  have hround0 : round ((q : ℝ) * alphaG d κ) = 0 := by omega
+  -- then |ε| = qα
+  have heps : epsG d κ q = (q : ℝ) * alphaG d κ := by
+    unfold epsG; rw [hround0]; push_cast; ring
+  have habs : |epsG d κ q| = (q : ℝ) * alphaG d κ := by rw [heps]; exact abs_of_pos hqαpos
+  -- qα = q/β ≥ 1/β
+  have hβpos := betaG_pos κ d hd2
+  have hαβ := alpha_beta_eq κ d hd2
+  have hαinv : alphaG d κ = 1 / betaG d κ := by
+    rw [eq_div_iff (ne_of_gt hβpos)]; exact hαβ
+  have hqα_ge : (q : ℝ) * alphaG d κ ≥ 1 / betaG d κ := by
+    rw [hαinv]
+    have : (1 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hq
+    nlinarith [hβpos, mul_pos (show (0:ℝ) < 1/betaG d κ by positivity) (show (0:ℝ) < 1 by norm_num)]
+  -- contradiction: 1/β ≤ |ε| ≤ δ < 1/β
+  rw [habs] at htol
+  -- so qα ≤ δ < 1/β ≤ qα.  Use 2^(κ+1)κD > 1 strictly.
+  have hbigstrict : (1 : ℝ) < 2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) := by
+    have hDr : (1:ℝ) ≤ (D:ℝ) := by exact_mod_cast hD
+    have hk : (2:ℝ) ≤ (κ:ℝ) := by exact_mod_cast hκ
+    have h2 : (4:ℝ) ≤ 2 ^ (κ+1) := by
+      calc (4:ℝ) = 2^2 := by norm_num
+        _ ≤ 2^(κ+1) := pow_le_pow_right₀ (by norm_num) (by omega)
+    have hstep : (8:ℝ) ≤ 2 ^ (κ+1) * (κ:ℝ) := by nlinarith
+    nlinarith [hstep, hDr]
+  have hδstrict : 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * betaG d κ) < 1 / betaG d κ := by
+    rw [div_lt_div_iff₀ (by positivity) hβpos]
+    nlinarith [hβpos]
+  linarith [hqα_ge, htol, hδstrict]
+
+/-! ### The core identity -/
+
+theorem rG_cast (κ D d q : ℕ) (hκ : 2 ≤ κ) (hD : 1 ≤ D) (hd2 : 2 ≤ d) (hq : 1 ≤ q)
+    (htol : |epsG d κ q| ≤ 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * betaG d κ)) :
+    ((rG d κ q : ℕ) : ℝ) = (round ((q : ℝ) * alphaG d κ) : ℤ) := by
+  have h1 := round_ge_one κ D d q hκ hD hd2 hq htol
+  unfold rG
+  have : ((round ((q:ℝ) * alphaG d κ)).toNat : ℤ) = round ((q:ℝ) * alphaG d κ) :=
+    Int.toNat_of_nonneg (by omega)
+  rw [show (((round ((q:ℝ) * alphaG d κ)).toNat : ℕ) : ℝ)
+        = (((round ((q:ℝ) * alphaG d κ)).toNat : ℤ) : ℝ) by push_cast; ring, this]
+
+theorem dr_pow_eq (κ D d q : ℕ) (hκ : 2 ≤ κ) (hD : 1 ≤ D) (hd2 : 2 ≤ d) (hq : 1 ≤ q)
+    (htol : |epsG d κ q| ≤ 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * betaG d κ)) :
+    (d : ℝ) * ((rG d κ q : ℕ) : ℝ) ^ κ = ((q : ℝ) - betaG d κ * epsG d κ q) ^ κ := by
+  have hrc := rG_cast κ D d q hκ hD hd2 hq htol
+  -- r = qα - ε
+  have hr : ((rG d κ q : ℕ) : ℝ) = (q : ℝ) * alphaG d κ - epsG d κ q := by
+    rw [hrc]; unfold epsG; ring
+  rw [hr]
+  -- d = β^κ
+  rw [← betaG_pow κ d (by omega) hd2]
+  rw [← mul_pow]
+  congr 1
+  -- β * (qα - ε) = q - βε
+  have hαβ := alpha_beta_eq κ d hd2
+  have hbq : betaG d κ * ((q : ℝ) * alphaG d κ) = (q : ℝ) := by
+    rw [show betaG d κ * ((q:ℝ) * alphaG d κ) = (q:ℝ) * (alphaG d κ * betaG d κ) by ring, hαβ]; ring
+  rw [mul_sub, hbq]
+
+/-! ### Central estimate -/
+
+theorem central_bound (κ D d q : ℕ) (hκ : 2 ≤ κ) (hD : 1 ≤ D) (hd2 : 2 ≤ d) (hq : 1 ≤ q)
+    (htol : |epsG d κ q| ≤ 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * betaG d κ)) :
+    |((d * D ^ κ * (rG d κ q) ^ κ : ℕ) : ℝ) - (((D * q) ^ κ : ℕ) : ℝ)|
+      < (((D * q) ^ (κ - 1) : ℕ) : ℝ) := by
+  have hβpos := betaG_pos κ d hd2
+  have hDr : (1:ℝ) ≤ (D:ℝ) := by exact_mod_cast hD
+  have hqr : (1:ℝ) ≤ (q:ℝ) := by exact_mod_cast hq
+  have hkr : (2:ℝ) ≤ (κ:ℝ) := by exact_mod_cast hκ
+  set s := betaG d κ * epsG d κ q with hs
+  -- bound on |s|
+  have hβε : |s| ≤ 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ)) := by
+    rw [hs, abs_mul, abs_of_pos hβpos]
+    calc betaG d κ * |epsG d κ q|
+        ≤ betaG d κ * (1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * betaG d κ)) :=
+          mul_le_mul_of_nonneg_left htol (le_of_lt hβpos)
+      _ = 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ)) := by
+          field_simp
+  -- 2^(κ+1) κ D ≥ 1 so |s| ≤ 1
+  have hden_ge : (1:ℝ) ≤ 2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) := by
+    have h2 : (1:ℝ) ≤ 2 ^ (κ+1) := one_le_pow₀ (by norm_num)
+    have hstep : (1:ℝ) ≤ 2 ^ (κ+1) * (κ:ℝ) := by nlinarith
+    nlinarith [hstep, hDr]
+  have hs1 : |s| ≤ 1 := by
+    calc |s| ≤ 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ)) := hβε
+      _ ≤ 1 / 1 := by apply div_le_div_of_nonneg_left (by norm_num) (by norm_num) hden_ge
+      _ = 1 := by norm_num
+  -- identity for m - n^κ
+  have hid := dr_pow_eq κ D d q hκ hD hd2 hq htol
+  have hm : ((d * D ^ κ * (rG d κ q) ^ κ : ℕ) : ℝ) = (D:ℝ)^κ * ((q:ℝ) - s)^κ := by
+    push_cast
+    rw [hs, ← hid]; push_cast; ring
+  have hn : (((D * q) ^ κ : ℕ) : ℝ) = (D:ℝ)^κ * (q:ℝ)^κ := by push_cast; ring
+  rw [hm, hn]
+  rw [show (D:ℝ)^κ * ((q:ℝ) - s)^κ - (D:ℝ)^κ * (q:ℝ)^κ
+        = (D:ℝ)^κ * (((q:ℝ) - s)^κ - (q:ℝ)^κ) by ring]
+  rw [abs_mul, abs_of_pos (show (0:ℝ) < (D:ℝ)^κ by positivity)]
+  -- apply binom bound
+  have hbin := binom_tail_bound κ (by omega) (q:ℝ) s hqr hs1
+  -- |(q-s)^κ - q^κ| ≤ κ q^{κ-1} |s| 2^κ
+  have hstep1 : (D:ℝ)^κ * |((q:ℝ) - s)^κ - (q:ℝ)^κ|
+      ≤ (D:ℝ)^κ * ((κ:ℝ) * (q:ℝ) ^ (κ - 1) * |s| * 2 ^ κ) :=
+    mul_le_mul_of_nonneg_left hbin (by positivity)
+  -- substitute |s| bound
+  have hstep2 : (D:ℝ)^κ * ((κ:ℝ) * (q:ℝ) ^ (κ - 1) * |s| * 2 ^ κ)
+      ≤ (D:ℝ)^κ * ((κ:ℝ) * (q:ℝ) ^ (κ - 1) * (1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ))) * 2 ^ κ) := by
+    apply mul_le_mul_of_nonneg_left _ (by positivity)
+    apply mul_le_mul_of_nonneg_right _ (by positivity)
+    apply mul_le_mul_of_nonneg_left hβε (by positivity)
+  -- compute RHS = D^{κ-1} q^{κ-1}/2 = (Dq)^{κ-1}/2 < (Dq)^{κ-1}
+  have hRHS : (D:ℝ)^κ * ((κ:ℝ) * (q:ℝ) ^ (κ - 1) * (1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ))) * 2 ^ κ)
+      = (D:ℝ)^(κ-1) * (q:ℝ)^(κ-1) / 2 := by
+    have hDne : (D:ℝ) ≠ 0 := by positivity
+    have hκne : (κ:ℝ) ≠ 0 := by positivity
+    have hDκ : (D:ℝ)^κ = (D:ℝ)^(κ-1) * (D:ℝ) := by
+      rw [← pow_succ]; congr 1; omega
+    have h2κ : (2:ℝ)^(κ+1) = 2^κ * 2 := by rw [pow_succ]
+    rw [hDκ, h2κ]
+    field_simp
+  have hfinal : (((D * q) ^ (κ - 1) : ℕ) : ℝ) = (D:ℝ)^(κ-1) * (q:ℝ)^(κ-1) := by push_cast; ring
+  calc (D:ℝ)^κ * |((q:ℝ) - s)^κ - (q:ℝ)^κ|
+      ≤ (D:ℝ)^(κ-1) * (q:ℝ)^(κ-1) / 2 := by rw [← hRHS]; exact le_trans hstep1 hstep2
+    _ < (D:ℝ)^(κ-1) * (q:ℝ)^(κ-1) := by
+        have : (0:ℝ) < (D:ℝ)^(κ-1) * (q:ℝ)^(κ-1) := by positivity
+        linarith
+    _ = (((D * q) ^ (κ - 1) : ℕ) : ℝ) := hfinal.symm
+
+/-! ### Window widths (ℕ facts) -/
+
+theorem window_width_upper (n κ : ℕ) (hκ : 1 ≤ κ) (hn : 1 ≤ n) :
+    n ^ κ + n ^ (κ - 1) ≤ (n + 1) ^ κ := by
+  have hge := geom_sum₂_mul_of_ge (show n ≤ n + 1 by omega) κ
+  have hsub : (n + 1) - n = 1 := by omega
+  rw [hsub, mul_one] at hge
+  -- the i = κ-1 term of the sum
+  have hmem : (κ - 1) ∈ range κ := by rw [mem_range]; omega
+  have hterm_le : n ^ (κ - 1) ≤ ∑ i ∈ range κ, (n + 1) ^ i * n ^ (κ - 1 - i) := by
+    have hsingle := Finset.single_le_sum (f := fun i => (n + 1) ^ i * n ^ (κ - 1 - i))
+      (fun i _ => Nat.zero_le _) hmem
+    refine le_trans ?_ hsingle
+    have heq : (n + 1) ^ (κ-1) * n ^ (κ - 1 - (κ-1)) = (n + 1) ^ (κ-1) := by
+      rw [show κ - 1 - (κ-1) = 0 by omega]; simp
+    simp only at hsingle ⊢
+    rw [heq]
+    exact Nat.pow_le_pow_left (by omega) _
+  -- combine
+  have hmono : n ^ κ ≤ (n + 1) ^ κ := Nat.pow_le_pow_left (by omega) _
+  omega
+
+theorem window_width_lower (n κ : ℕ) (hκ : 1 ≤ κ) (hn : 1 ≤ n) :
+    (n - 1) ^ κ + n ^ (κ - 1) ≤ n ^ κ := by
+  have hge := geom_sum₂_mul_of_ge (show n - 1 ≤ n by omega) κ
+  have hsub : n - (n - 1) = 1 := by omega
+  rw [hsub, mul_one] at hge
+  have hmem : (κ - 1) ∈ range κ := by rw [mem_range]; omega
+  have hterm_le : n ^ (κ - 1) ≤ ∑ i ∈ range κ, n ^ i * (n - 1) ^ (κ - 1 - i) := by
+    have hsingle := Finset.single_le_sum (f := fun i => n ^ i * (n - 1) ^ (κ - 1 - i))
+      (fun i _ => Nat.zero_le _) hmem
+    refine le_trans ?_ hsingle
+    have heq : n ^ (κ-1) * (n - 1) ^ (κ - 1 - (κ-1)) = n ^ (κ-1) := by
+      rw [show κ - 1 - (κ-1) = 0 by omega]; simp
+    simp only at hsingle ⊢
+    rw [heq]
+  have hmono : (n - 1) ^ κ ≤ n ^ κ := Nat.pow_le_pow_left (by omega) _
+  omega
+
+/-! ### m ≠ n^κ -/
+
+theorem m_ne (κ D d q : ℕ) (hκ : 2 ≤ κ) (hD : 1 ≤ D) (hd2 : 2 ≤ d)
+    (hd : Squarefree d) (hq : 1 ≤ q)
+    (htol : |epsG d κ q| ≤ 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * betaG d κ)) :
+    (d * D ^ κ * (rG d κ q) ^ κ) ≠ (D * q) ^ κ := by
+  intro heq
+  -- d * r^κ = q^κ
+  have hr1 : 1 ≤ round ((q:ℝ) * alphaG d κ) := round_ge_one κ D d q hκ hD hd2 hq htol
+  have hrG1 : 1 ≤ rG d κ q := by unfold rG; omega
+  have hDne : D ≠ 0 := by omega
+  have hdr : d * (rG d κ q) ^ κ = q ^ κ := by
+    have hexp : d * D ^ κ * (rG d κ q) ^ κ = D ^ κ * (d * (rG d κ q) ^ κ) := by ring
+    rw [hexp, mul_pow] at heq
+    -- D^κ * (d r^κ) = D^κ * q^κ
+    have hcancel : d * (rG d κ q) ^ κ = q ^ κ := by
+      have hDκ : D ^ κ ≠ 0 := pow_ne_zero _ hDne
+      exact Nat.eq_of_mul_eq_mul_left (Nat.pos_of_ne_zero hDκ) (by linarith [heq])
+    exact hcancel
+  -- so β = q / r is rational, contradiction
+  have hβ := betaG_irrational κ d hκ hd2 hd
+  apply hβ
+  -- (β)^κ = d = q^κ / r^κ = (q/r)^κ ⟹ β = q/r
+  have hβpos := betaG_pos κ d hd2
+  have hrpos : 0 < (rG d κ q : ℝ) := by exact_mod_cast hrG1
+  have hd_eq : (d : ℝ) = ((q : ℝ) / (rG d κ q : ℝ)) ^ κ := by
+    rw [div_pow]
+    rw [eq_div_iff (by positivity)]
+    have : (d : ℝ) * (rG d κ q : ℝ) ^ κ = (q : ℝ) ^ κ := by exact_mod_cast hdr
+    linarith [this]
+  -- β = q/r
+  have hβeq : betaG d κ = (q : ℝ) / (rG d κ q : ℝ) := by
+    have hbpow := betaG_pow κ d (by omega) hd2
+    have hpos2 : 0 < (q : ℝ) / (rG d κ q : ℝ) := by positivity
+    have hpoweq : betaG d κ ^ κ = ((q : ℝ) / (rG d κ q : ℝ)) ^ κ := by rw [hbpow, hd_eq]
+    rcases lt_trichotomy (betaG d κ) ((q : ℝ) / (rG d κ q : ℝ)) with hlt | heq | hgt
+    · exact absurd hpoweq (ne_of_lt (pow_lt_pow_left₀ hlt (le_of_lt hβpos) (by omega)))
+    · exact heq
+    · exact absurd hpoweq.symm (ne_of_lt (pow_lt_pow_left₀ hgt (le_of_lt hpos2) (by omega)))
+  refine ⟨(q : ℚ) / (rG d κ q : ℚ), ?_⟩
+  rw [hβeq]; push_cast; ring
+
+/-! ### Main theorem -/
+
+theorem placement_kfull_window_general
+    (κ D d q : ℕ) (hκ : 2 ≤ κ) (hD : 1 ≤ D) (hd2 : 2 ≤ d)
+    (hd : Squarefree d) (hdvd : d ∣ D) (hq : 1 ≤ q)
+    (htol : |epsG d κ q| ≤ 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d : ℝ) ^ ((1 : ℝ) / (κ : ℝ)))) :
+    1 ≤ rG d κ q ∧ KFull κ (d * D ^ κ * (rG d κ q) ^ κ) ∧
+      ( (d * D ^ κ * (rG d κ q) ^ κ) ∈ Finset.Ioo ((D * q - 1) ^ κ) ((D * q) ^ κ)
+      ∨ (d * D ^ κ * (rG d κ q) ^ κ) ∈ Finset.Ioo ((D * q) ^ κ) ((D * q + 1) ^ κ) ) := by
+  -- rewrite tolerance with betaG
+  have htol' : |epsG d κ q| ≤ 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * betaG d κ) := by
+    unfold betaG; exact htol
+  -- r ≥ 1
+  have hr1 : 1 ≤ round ((q:ℝ) * alphaG d κ) := round_ge_one κ D d q hκ hD hd2 hq htol'
+  have hrG1 : 1 ≤ rG d κ q := by unfold rG; omega
+  refine ⟨hrG1, kfull_construction κ d D (rG d κ q) hdvd, ?_⟩
+  -- abbreviations
+  set m := d * D ^ κ * (rG d κ q) ^ κ with hm
+  set n := D * q with hn
+  have hn1 : 1 ≤ n := Nat.mul_pos hD hq
+  -- the central bound (ℝ)
+  have hcb := central_bound κ D d q hκ hD hd2 hq htol'
+  -- |(m:ℝ) - (n^κ : ℝ)| < (n^(κ-1) : ℝ)
+  have hcb' : |((m : ℕ) : ℝ) - ((n ^ κ : ℕ) : ℝ)| < ((n ^ (κ - 1) : ℕ) : ℝ) := by
+    rw [hm, hn]; exact_mod_cast hcb
+  -- m ≠ n^κ
+  have hmne : m ≠ n ^ κ := by rw [hm, hn]; exact m_ne κ D d q hκ hD hd2 hd hq htol'
+  -- convert to ℕ bounds: |m - n^κ| < n^(κ-1) means n^κ - n^(κ-1) < m < n^κ + n^(κ-1)
+  have habs := abs_lt.mp hcb'
+  have hlo : ((n ^ κ : ℕ) : ℝ) - ((n ^ (κ-1) : ℕ) : ℝ) < (m : ℝ) := by linarith [habs.1]
+  have hhi : (m : ℝ) < ((n ^ κ : ℕ) : ℝ) + ((n ^ (κ-1) : ℕ) : ℝ) := by linarith [habs.2]
+  -- in ℕ
+  have hloN : n ^ κ - n ^ (κ-1) < m := by
+    by_contra hc
+    push_neg at hc  -- m ≤ n^κ - n^(κ-1)
+    have : (m : ℝ) ≤ ((n ^ κ : ℕ) : ℝ) - ((n ^ (κ-1) : ℕ) : ℝ) := by
+      have hge : n ^ (κ-1) ≤ n ^ κ := Nat.pow_le_pow_right (by omega) (by omega)
+      have : (m:ℝ) ≤ ((n^κ - n^(κ-1) : ℕ) : ℝ) := by exact_mod_cast hc
+      rw [Nat.cast_sub hge] at this; exact this
+    linarith [hlo]
+  have hhiN : m < n ^ κ + n ^ (κ-1) := by
+    by_contra hc
+    push_neg at hc
+    have : ((n ^ κ : ℕ) : ℝ) + ((n ^ (κ-1) : ℕ) : ℝ) ≤ (m : ℝ) := by exact_mod_cast hc
+    linarith [hhi]
+  -- window widths
+  have hwlo := window_width_lower n κ (by omega) hn1   -- (n-1)^κ + n^(κ-1) ≤ n^κ
+  have hwhi := window_width_upper n κ (by omega) hn1   -- n^κ + n^(κ-1) ≤ (n+1)^κ
+  -- dichotomy m < n^κ or m > n^κ
+  rcases Nat.lt_or_ge m (n ^ κ) with hlt | hge
+  · -- lower window: (n-1)^κ < m < n^κ
+    left
+    rw [Finset.mem_Ioo]
+    have hge2 : n ^ (κ-1) ≤ n ^ κ := Nat.pow_le_pow_right (by omega) (by omega)
+    refine ⟨?_, hlt⟩
+    -- (n-1)^κ < m.  We have (n-1)^κ ≤ n^κ - n^(κ-1) < m
+    omega
+  · -- m ≥ n^κ, and m ≠ n^κ ⟹ m > n^κ
+    right
+    have hgt : n ^ κ < m := lt_of_le_of_ne hge (fun h => hmne h.symm)
+    rw [Finset.mem_Ioo]
+    refine ⟨hgt, ?_⟩
+    -- m < (n+1)^κ.  m < n^κ + n^(κ-1) ≤ (n+1)^κ
+    omega
+
+/- ===== GENERAL-κ assembly additions ===== -/
+open scoped BigOperators
+open Real
+
+/-- Logarithmic bound on the box-principle denominator `q`, general-κ tolerance
+`δ d = 1/(2^(κ+1)·κ·D·d^{1/κ})`.  Uses `d^{1/κ} ≤ d ≤ D`. -/
+theorem log_q_bound_general (κ : ℕ) (hκ : 2 ≤ κ) (D : ℕ) (hD1 : 1 ≤ D) (S : Finset ℕ)
     (hSdvd : ∀ d ∈ S, 2 ≤ d ∧ d ≤ D) (q : ℕ) (hq1 : 1 ≤ q)
-    (hqbound : q ≤ ∏ i : S, ⌈((1 : ℝ) / (16 * (D : ℝ) * Real.sqrt (i : ℕ)))⁻¹⌉₊) :
-    Real.log q ≤ (S.card : ℝ) * Real.log (17 * (D : ℝ) ^ 2) := by
+    (hqbound : q ≤ ∏ i : S,
+        ⌈((1 : ℝ) / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (i : ℕ) ^ ((1 : ℝ) / (κ : ℝ))))⁻¹⌉₊) :
+    Real.log q ≤ (S.card : ℝ) * Real.log ((2 ^ (κ + 1) * (κ : ℝ) + 1) * (D : ℝ) ^ 2) := by
   classical
   have hDR1 : (1:ℝ) ≤ (D:ℝ) := by exact_mod_cast hD1
+  have hκR : (2:ℝ) ≤ (κ:ℝ) := by exact_mod_cast hκ
+  -- the "Kconst·D^2" upper bound for each ceil
+  set Kc : ℝ := 2 ^ (κ + 1) * (κ : ℝ) + 1 with hKc
+  have hKcpos : (0:ℝ) < Kc := by rw [hKc]; positivity
   -- positivity of the ceil for d ∈ S
-  have hcpos : ∀ d ∈ S, 0 < ⌈((1 : ℝ) / (16 * (D : ℝ) * Real.sqrt (d:ℕ)))⁻¹⌉₊ := by
+  have hbasepos : ∀ d ∈ S, (0:ℝ) < 2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ)) := by
     intro d hd
     obtain ⟨hd2, _⟩ := hSdvd d hd
-    apply Nat.ceil_pos.mpr; apply inv_pos.mpr; apply one_div_pos.mpr
-    have : (0:ℝ) < Real.sqrt d := Real.sqrt_pos.mpr (by exact_mod_cast (by omega : 0 < d))
+    have : (0:ℝ) < (d:ℝ) ^ ((1:ℝ)/(κ:ℝ)) := by positivity
     positivity
-  -- each ceil ≤ 17 D^2
+  have hcpos : ∀ d ∈ S, 0 < ⌈((1 : ℝ) / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ := by
+    intro d hd
+    apply Nat.ceil_pos.mpr; apply inv_pos.mpr; apply one_div_pos.mpr
+    exact hbasepos d hd
+  -- each ceil ≤ Kc * D^2
   have hδinv : ∀ d ∈ S,
-      ((⌈((1 : ℝ) / (16 * (D : ℝ) * Real.sqrt (d:ℕ)))⁻¹⌉₊ : ℕ) : ℝ) ≤ 17 * (D:ℝ)^2 := by
+      ((⌈((1 : ℝ) / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ : ℕ) : ℝ)
+        ≤ Kc * (D:ℝ)^2 := by
     intro d hd
     obtain ⟨hd2, hdD⟩ := hSdvd d hd
-    have hδeq : ((1 : ℝ) / (16 * (D : ℝ) * Real.sqrt (d:ℕ)))⁻¹ = 16 * (D:ℝ) * Real.sqrt d := by
+    have hbase := hbasepos d hd
+    have hδeq : ((1 : ℝ) / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹
+        = 2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ)) := by
       rw [one_div, inv_inv]
-    rw [hδeq]
-    have hsd : Real.sqrt d ≤ Real.sqrt D := Real.sqrt_le_sqrt (by exact_mod_cast hdD)
-    have hsD : Real.sqrt D ≤ D := by
-      nlinarith [Real.sq_sqrt (show (0:ℝ) ≤ (D:ℝ) by positivity), Real.sqrt_nonneg (D:ℝ),
-        Real.sqrt_le_sqrt (show (1:ℝ) ≤ (D:ℝ) from hDR1), Real.sqrt_one]
-    have hsd1 : (1:ℝ) ≤ Real.sqrt d := by
-      rw [show (1:ℝ) = Real.sqrt 1 by simp]; apply Real.sqrt_le_sqrt
-      exact_mod_cast (by omega : (1:ℕ) ≤ d)
-    have hceil : (⌈(16 * (D:ℝ) * Real.sqrt d)⌉₊ : ℝ) ≤ 16 * (D:ℝ) * Real.sqrt d + 1 :=
+    -- d^{1/κ} ≤ d
+    have hdR1 : (1:ℝ) ≤ (d:ℝ) := by exact_mod_cast (by omega : 1 ≤ d)
+    have hexple : (d:ℝ) ^ ((1:ℝ)/(κ:ℝ)) ≤ (d:ℝ) := by
+      calc (d:ℝ) ^ ((1:ℝ)/(κ:ℝ)) ≤ (d:ℝ) ^ (1:ℝ) := by
+            apply Real.rpow_le_rpow_of_exponent_le hdR1
+            rw [div_le_one (by positivity)]; linarith
+        _ = (d:ℝ) := Real.rpow_one _
+    have hdRle : (d:ℝ) ≤ (D:ℝ) := by exact_mod_cast hdD
+    -- the real value ≤ 2^(κ+1)·κ·D·D = (2^(κ+1)·κ)·D^2
+    have hval : 2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ))
+        ≤ 2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)^2 := by
+      have hfac : (0:ℝ) ≤ 2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) := by positivity
+      calc 2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ))
+          ≤ 2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (D:ℝ) := by
+            apply mul_le_mul_of_nonneg_left _ hfac
+            exact le_trans hexple hdRle
+        _ = 2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)^2 := by ring
+    have hceil : (⌈2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ))⌉₊ : ℝ)
+        ≤ 2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ)) + 1 :=
       le_of_lt (Nat.ceil_lt_add_one (by positivity))
-    nlinarith [hsd, hsD, hsd1, hDR1, Real.sqrt_nonneg (d:ℝ), hceil]
+    rw [hδeq]
+    have hD2 : (1:ℝ) ≤ (D:ℝ)^2 := by nlinarith [hDR1]
+    calc (⌈2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ))⌉₊ : ℝ)
+        ≤ 2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℕ) ^ ((1:ℝ)/(κ:ℝ)) + 1 := hceil
+      _ ≤ 2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)^2 + 1 := by linarith [hval]
+      _ ≤ 2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)^2 + 1 * (D:ℝ)^2 := by nlinarith [hD2]
+      _ = Kc * (D:ℝ)^2 := by rw [hKc]; ring
   -- log q ≤ log of product
-  have hprodpos : (0:ℝ) < ((∏ i : S, ⌈((1:ℝ)/(16*(D:ℝ)*Real.sqrt (i:ℕ)))⁻¹⌉₊ : ℕ) : ℝ) := by
-    have : 0 < ∏ i : S, ⌈((1:ℝ)/(16*(D:ℝ)*Real.sqrt (i:ℕ)))⁻¹⌉₊ :=
+  have hprodpos : (0:ℝ) < ((∏ i : S, ⌈((1:ℝ)/(2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)*(i:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ : ℕ) : ℝ) := by
+    have : 0 < ∏ i : S, ⌈((1:ℝ)/(2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)*(i:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ :=
       Finset.prod_pos (fun i _ => hcpos i i.2)
     exact_mod_cast this
   have hqle : Real.log q
-      ≤ Real.log ((∏ i : S, ⌈((1:ℝ)/(16*(D:ℝ)*Real.sqrt (i:ℕ)))⁻¹⌉₊ : ℕ) : ℝ) := by
+      ≤ Real.log ((∏ i : S, ⌈((1:ℝ)/(2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)*(i:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ : ℕ) : ℝ) := by
     apply Real.log_le_log (by exact_mod_cast hq1); exact_mod_cast hqbound
   refine le_trans hqle ?_
-  rw [show ((∏ i : S, ⌈((1:ℝ)/(16*(D:ℝ)*Real.sqrt (i:ℕ)))⁻¹⌉₊ : ℕ) : ℝ)
-        = ∏ i : S, ((⌈((1:ℝ)/(16*(D:ℝ)*Real.sqrt (i:ℕ)))⁻¹⌉₊ : ℕ) : ℝ) by push_cast; rfl]
-  rw [Real.log_prod (by
-    intro i _; have := hcpos i i.2; positivity)]
+  rw [show ((∏ i : S, ⌈((1:ℝ)/(2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)*(i:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ : ℕ) : ℝ)
+        = ∏ i : S, ((⌈((1:ℝ)/(2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)*(i:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ : ℕ) : ℝ) by push_cast; rfl]
+  rw [Real.log_prod (by intro i _; have := hcpos i i.2; positivity)]
   rw [Finset.sum_coe_sort S
-    (fun d => Real.log ((⌈((1:ℝ)/(16*(D:ℝ)*Real.sqrt (d:ℕ)))⁻¹⌉₊ : ℕ) : ℝ))]
+    (fun d => Real.log ((⌈((1:ℝ)/(2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)*(d:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ : ℕ) : ℝ))]
   have hbd : ∀ d ∈ S,
-      Real.log ((⌈((1:ℝ)/(16*(D:ℝ)*Real.sqrt (d:ℕ)))⁻¹⌉₊ : ℕ) : ℝ) ≤ Real.log (17 * (D:ℝ)^2) := by
+      Real.log ((⌈((1:ℝ)/(2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)*(d:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ : ℕ) : ℝ)
+        ≤ Real.log (Kc * (D:ℝ)^2) := by
     intro d hd
     apply Real.log_le_log _ (hδinv d hd)
     have := hcpos d hd; exact_mod_cast this
-  calc ∑ d ∈ S, Real.log ((⌈((1:ℝ)/(16*(D:ℝ)*Real.sqrt (d:ℕ)))⁻¹⌉₊ : ℕ) : ℝ)
-      ≤ S.card • Real.log (17 * (D:ℝ)^2) := Finset.sum_le_card_nsmul _ _ _ hbd
-    _ = (S.card : ℝ) * Real.log (17 * (D:ℝ)^2) := by rw [nsmul_eq_mul]
+  calc ∑ d ∈ S, Real.log ((⌈((1:ℝ)/(2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)*(d:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ : ℕ) : ℝ)
+      ≤ S.card • Real.log (Kc * (D:ℝ)^2) := Finset.sum_le_card_nsmul _ _ _ hbd
+    _ = (S.card : ℝ) * Real.log (Kc * (D:ℝ)^2) := by rw [nsmul_eq_mul]
+
+/-- General-κ injectivity-based window card bound. -/
+theorem window_card_bound_general (κ D q : ℕ) (hκ : 2 ≤ κ) (hD : 1 ≤ D) (T : Finset ℕ)
+    (hsq : ∀ p ∈ T, Squarefree p) (hr : ∀ p ∈ T, 1 ≤ rG p κ q)
+    (W : Finset ℕ)
+    (hmem : ∀ p ∈ T, (p * D ^ κ * (rG p κ q) ^ κ) ∈ W ∧ KFull κ (p * D ^ κ * (rG p κ q) ^ κ)) :
+    T.card ≤ (W.filter (fun m => KFull κ m)).card := by
+  classical
+  have hDne : (D:ℕ) ≠ 0 := by omega
+  have h_inj : Finset.card (Finset.image (fun p => p * D ^ κ * (rG p κ q) ^ κ) T) = T.card := by
+    refine Finset.card_image_of_injOn fun p hp p' hp' h => ?_
+    -- p * D^κ * (rG p)^κ = p' * D^κ * (rG p')^κ ⟹ p*(rG p)^κ = p'*(rG p')^κ
+    have hcancel : p * (rG p κ q) ^ κ = p' * (rG p' κ q) ^ κ := by
+      have hDκ : (D ^ κ) ≠ 0 := pow_ne_zero _ hDne
+      apply Nat.eq_of_mul_eq_mul_left (Nat.pos_of_ne_zero hDκ)
+      -- D^κ * (p*(rG p)^κ) = D^κ * (p'*(rG p')^κ)
+      have e1 : D ^ κ * (p * (rG p κ q) ^ κ) = p * D ^ κ * (rG p κ q) ^ κ := by ring
+      have e2 : D ^ κ * (p' * (rG p' κ q) ^ κ) = p' * D ^ κ * (rG p' κ q) ^ κ := by ring
+      rw [e1, e2]; exact h
+    exact (construction_injective κ p p' (rG p κ q) (rG p' κ q) hκ
+      (hsq p hp) (hsq p' hp') (hr p hp) (hr p' hp') hcancel).1
+  rw [← h_inj]
+  apply Finset.card_le_card
+  apply Finset.image_subset_iff.mpr
+  intro p hp
+  exact Finset.mem_filter.mpr (hmem p hp)
 
 set_option maxHeartbeats 1000000 in
-theorem powerful_count_rate :
+theorem powerful_count_rate_general (κ : ℕ) (hκ : 2 ≤ κ) :
     ∃ c : ℝ, 0 < c ∧ ∀ B : ℕ, ∃ n : ℕ, B < n ∧
       c * Real.log n / (Real.log (Real.log n) * Real.log (Real.log (Real.log n)))
-        ≤ ((Finset.Ioo (n^2) ((n+1)^2)).filter (fun m => KFull 2 m)).card := by
-  -- Fix the constants once.
+        ≤ ((Finset.Ioo (n ^ κ) ((n + 1) ^ κ)).filter (fun m => KFull κ m)).card := by
+  -- κ-dependent constant from log Kc, Kc = 2^(κ+1)·κ + 1
+  set Kc : ℝ := 2 ^ (κ + 1) * (κ : ℝ) + 1 with hKcdef
+  have hKcpos : (0:ℝ) < Kc := by rw [hKcdef]; positivity
   obtain ⟨C', hC'pos, hC'⟩ := log_primorial_le nth_prime_upper
-  set Cbig : ℝ := 100 * C' + 100 with hCbigdef
+  -- Cbig absorbs all κ-dependent constants
+  set Cbig : ℝ := 100 * C' + 100 + 100 * |Real.log Kc| with hCbigdef
   have hCbigpos : 0 < Cbig := by rw [hCbigdef]; positivity
   obtain ⟨c, ℓ₀, hcpos, hinv⟩ := rate_inversion Cbig hCbigpos
   refine ⟨c, hcpos, ?_⟩
   intro B
-  -- Choose ℓ very large: bigger than ℓ₀, B, and with `Real.log ℓ ≥ 30`.
   obtain ⟨ℓ, hℓℓ₀, hℓB, hℓlog⟩ :
       ∃ ℓ : ℕ, ℓ₀ ≤ ℓ ∧ B < ℓ ∧ (30:ℝ) ≤ Real.log ℓ := by
     refine ⟨max ℓ₀ (max (B+1) (Nat.ceil (Real.exp 30))), le_max_left _ _, ?_, ?_⟩
@@ -507,13 +991,11 @@ theorem powerful_count_rate :
         exact le_trans (Nat.le_ceil _) h1
       have := Real.log_le_log (Real.exp_pos 30) hge
       rwa [Real.log_exp] at this
-  -- ℓ ≥ exp 30 > 1.
   have hℓ1 : 1 ≤ ℓ := by
     by_contra hcon
     push_neg at hcon
     interval_cases ℓ <;> simp_all <;> nlinarith [hℓlog]
   have hℓR1 : (1:ℝ) ≤ (ℓ:ℝ) := by exact_mod_cast hℓ1
-  -- positivity / size facts about ℓ.
   have hℓRpos : (0:ℝ) < (ℓ:ℝ) := by linarith
   have hlogℓpos : (0:ℝ) < Real.log ℓ := by linarith
   have hlogℓ1 : (1:ℝ) ≤ Real.log ℓ := by linarith
@@ -531,7 +1013,6 @@ theorem powerful_count_rate :
         _ ≤ Real.log 30 := Real.log_le_log (Real.exp_pos 3) he3
     linarith
   have hloglogℓpos : (0:ℝ) < Real.log (Real.log ℓ) := by linarith
-  -- h := Nat.log 2 (2*ℓ) + 2, kept abstract via its key properties.
   obtain ⟨h, hh2, hpow, hhub⟩ :
       ∃ h : ℕ, 2 ≤ h ∧ 2 * ℓ ≤ 2 ^ h - 1 ∧ (h : ℝ) * Real.log 2 ≤ Real.log (2 * ℓ) + 2 := by
     refine ⟨Nat.log 2 (2 * ℓ) + 2, by omega, ?_, ?_⟩
@@ -540,8 +1021,7 @@ theorem powerful_count_rate :
       have h2 : 2 ^ (Nat.log 2 (2 * ℓ) + 1) ≤ 2 ^ (Nat.log 2 (2 * ℓ) + 2) :=
         Nat.pow_le_pow_right (by norm_num) (by omega)
       omega
-    · -- (log₂(2ℓ)+2)·log2 = log₂(2ℓ)·log2 + 2 log2 ≤ log(2ℓ) + 2 log2
-      have hN : 1 ≤ 2 * ℓ := by omega
+    · have hN : 1 ≤ 2 * ℓ := by omega
       have hkey : (Nat.log 2 (2 * ℓ) : ℝ) * Real.log 2 ≤ Real.log (2 * ℓ) := by
         have h1 : (2:ℕ) ^ (Nat.log 2 (2 * ℓ)) ≤ 2 * ℓ := Nat.pow_log_le_self 2 (by omega)
         have h2 : ((2:ℕ) ^ (Nat.log 2 (2 * ℓ)) : ℝ) ≤ ((2 * ℓ : ℕ) : ℝ) := by exact_mod_cast h1
@@ -554,7 +1034,6 @@ theorem powerful_count_rate :
         have := Real.log_le_sub_one_of_pos (show (0:ℝ) < 2 by norm_num); linarith
       push_cast
       nlinarith [hkey, hl2le]
-  -- D as a product over the image finset of the first h primes.
   set Dset : Finset ℕ := (Finset.range h).image (Nat.nth Nat.Prime) with hDsetdef
   set D : ℕ := ∏ p ∈ Dset, p with hDdef
   have hDset_prime : ∀ p ∈ Dset, p.Prime := by
@@ -573,41 +1052,41 @@ theorem powerful_count_rate :
   have hD : 1 ≤ D := by omega
   have hDpf : D.primeFactors.card = h := by
     rw [hDdef, Nat.primeFactors_prod hDset_prime, hDset_card]
-  -- Many squarefree divisors of D.
   obtain ⟨S₀, hS₀card, hS₀prop⟩ := squarefree_many_divisors D hDsq hD1 ℓ (by rw [hDpf]; exact hpow)
-  -- Shrink to exactly 2*ℓ.
   obtain ⟨S, hSsub, hScard⟩ := Finset.exists_subset_card_eq hS₀card
   have hSprop : ∀ d ∈ S, d ∣ D ∧ 1 < d ∧ Squarefree d := fun d hd => hS₀prop d (hSsub hd)
-  -- Box principle to find q.
-  set α : ℕ → ℝ := fun d => 1 / Real.sqrt d with hαdef
-  set δ : ℕ → ℝ := fun d => 1 / (16 * (D : ℝ) * Real.sqrt d) with hδdef
+  -- Box principle: α = alphaG d κ, δ d = 1/(2^(κ+1)·κ·D·d^{1/κ})
+  set α : ℕ → ℝ := fun d => alphaG d κ with hαdef
+  set δ : ℕ → ℝ := fun d => 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℝ) ^ ((1:ℝ)/(κ:ℝ))) with hδdef
   have hδpos : ∀ d ∈ S, 0 < δ d := by
     intro d hd
     obtain ⟨_, hd1, _⟩ := hSprop d hd
     rw [hδdef]; apply one_div_pos.mpr
-    have : (0:ℝ) < Real.sqrt d := Real.sqrt_pos.mpr (by exact_mod_cast (by omega : 0 < d))
+    have : (0:ℝ) < (d:ℝ) ^ ((1:ℝ)/(κ:ℝ)) := by
+      have : (0:ℝ) < (d:ℝ) := by exact_mod_cast (by omega : 0 < d)
+      positivity
     positivity
   obtain ⟨q, hq1, hqbound, hqtol⟩ :=
     box_principle_quantitative (ι := S) (fun i => α i) (fun i => δ i) (fun i => hδpos i i.2)
   set n : ℕ := D * q with hndef
   have hn1 : 1 ≤ n := Nat.mul_pos hD hq1
-  -- placement for each d ∈ S
-  have htol : ∀ d ∈ S, |epsOf d q| ≤ 1 / (16 * (D : ℝ) * Real.sqrt d) := by
+  -- tolerance for each d ∈ S
+  have htol : ∀ d ∈ S, |epsG d κ q| ≤ 1 / (2 ^ (κ + 1) * (κ : ℝ) * (D : ℝ) * (d:ℝ) ^ ((1:ℝ)/(κ:ℝ))) := by
     intro d hd
     have := hqtol ⟨d, hd⟩
     rw [hαdef, hδdef] at this
     simp only at this
-    rw [epsOf]
+    rw [epsG]
     convert this using 2
-  have h_placement : ∀ d ∈ S, 1 ≤ rOf d q ∧ KFull 2 (mOf D d q) ∧
-      (mOf D d q ∈ Finset.Ioo ((D * q - 1) ^ 2) ((D * q) ^ 2) ∨
-       mOf D d q ∈ Finset.Ioo ((D * q) ^ 2) ((D * q + 1) ^ 2)) := by
+  have h_placement : ∀ d ∈ S, 1 ≤ rG d κ q ∧ KFull κ (d * D ^ κ * (rG d κ q) ^ κ) ∧
+      ((d * D ^ κ * (rG d κ q) ^ κ) ∈ Finset.Ioo ((D * q - 1) ^ κ) ((D * q) ^ κ) ∨
+       (d * D ^ κ * (rG d κ q) ^ κ) ∈ Finset.Ioo ((D * q) ^ κ) ((D * q + 1) ^ κ)) := by
     intro d hd
     obtain ⟨hdvd, hd1, hdsq⟩ := hSprop d hd
-    exact placement_kfull_window D d q hD (by omega) hdsq hdvd hq1 (htol d hd)
+    exact placement_kfull_window_general κ D d q hκ hD (by omega) hdsq hdvd hq1 (htol d hd)
   -- pigeonhole
-  set Shi := S.filter (fun d => mOf D d q ∈ Finset.Ioo (n ^ 2) ((n + 1) ^ 2)) with hShidef
-  set Slo := S.filter (fun d => mOf D d q ∈ Finset.Ioo ((n - 1) ^ 2) (n ^ 2)) with hSlodef
+  set Shi := S.filter (fun d => (d * D ^ κ * (rG d κ q) ^ κ) ∈ Finset.Ioo (n ^ κ) ((n + 1) ^ κ)) with hShidef
+  set Slo := S.filter (fun d => (d * D ^ κ * (rG d κ q) ^ κ) ∈ Finset.Ioo ((n - 1) ^ κ) (n ^ κ)) with hSlodef
   have h_pig : ℓ ≤ Shi.card ∨ ℓ ≤ Slo.card := by
     have hsum : Shi.card + Slo.card ≥ S.card := by
       rw [← Finset.card_union_add_card_inter]
@@ -619,10 +1098,9 @@ theorem powerful_count_rate :
       · left; refine ⟨hx, ?_⟩; rw [hndef]; exact hhi
     have : 2 * ℓ ≤ Shi.card + Slo.card := by omega
     omega
-  -- ===== Size bookkeeping =====
+  -- Size bookkeeping
   have hqR1 : (1:ℝ) ≤ (q:ℝ) := by exact_mod_cast hq1
   have hDR1 : (1:ℝ) ≤ (D:ℝ) := by exact_mod_cast hD
-  -- D ≥ 2^h ≥ 2ℓ+1 (product of h primes, each ≥ 2).
   have hDge2pow : 2 ^ h ≤ D := by
     rw [hDdef]
     calc 2 ^ h = ∏ _p ∈ Dset, 2 := by rw [Finset.prod_const, hDset_card]
@@ -632,18 +1110,14 @@ theorem powerful_count_rate :
       have h1 : 1 ≤ 2 ^ h := Nat.one_le_two_pow
       omega
     omega
-  -- n large.
   have hnge : 2 * ℓ < n := by rw [hndef]; calc 2 * ℓ < D := h2ℓltD
                                               _ ≤ D * q := Nat.le_mul_of_pos_right D hq1
-  -- (D:ℝ) = ∏ i ∈ range h, (nth Prime i : ℝ)
   have hDcast : ((D:ℕ):ℝ) = ∏ i ∈ Finset.range h, (Nat.nth Nat.Prime i : ℝ) := by
     rw [hDdef, hDsetdef, Finset.prod_image
       (by intro a _ b _ hab; exact Nat.nth_injective Nat.infinite_setOf_prime hab)]
     push_cast; rfl
-  -- log D ≤ C' * h * log h
   have hlogD : Real.log D ≤ C' * (h:ℝ) * Real.log h := by
     rw [hDcast]; exact hC' h hh2
-  -- bound h ≤ 8 log ℓ and log h ≤ 2 loglog ℓ.
   have hl2lb : (1:ℝ)/2 ≤ Real.log 2 := by
     have : Real.log (2⁻¹) ≤ (2:ℝ)⁻¹ - 1 := Real.log_le_sub_one_of_pos (by norm_num)
     rw [Real.log_inv] at this; linarith
@@ -654,7 +1128,6 @@ theorem powerful_count_rate :
     linarith
   have hhub' : (h:ℝ) * Real.log 2 ≤ Real.log (2 * (ℓ:ℝ)) + 2 := hhub
   have hhle : (h:ℝ) ≤ 8 * Real.log ℓ := by
-    -- (h)·log2 ≤ log(2ℓ)+2 ≤ 3 + log ℓ ; log2 ≥ 1/2 ⇒ h ≤ 2(3+logℓ) = 6+2logℓ ≤ 8 log ℓ
     have hb : (h:ℝ) * Real.log 2 ≤ 3 + Real.log ℓ := by linarith [hhub', hlog2ℓ]
     have hhpos : (0:ℝ) ≤ (h:ℝ) := by positivity
     nlinarith [hb, hl2lb, hhpos, hlogℓ1]
@@ -662,7 +1135,6 @@ theorem powerful_count_rate :
     have : (2:ℝ) ≤ (h:ℝ) := by exact_mod_cast hh2
     linarith
   have hloghle : Real.log h ≤ 2 * Real.log (Real.log ℓ) := by
-    -- log h ≤ log(8 log ℓ) = log 8 + loglog ℓ ≤ 3 + loglog ℓ ≤ 2 loglog ℓ
     have hstep : Real.log h ≤ Real.log (8 * Real.log ℓ) :=
       Real.log_le_log hhpos hhle
     have hexp : Real.log (8 * Real.log ℓ) = Real.log 8 + Real.log (Real.log ℓ) := by
@@ -674,7 +1146,6 @@ theorem powerful_count_rate :
         have := Real.log_le_sub_one_of_pos (show (0:ℝ) < 2 by norm_num); linarith
       rw [this]; linarith
     rw [hexp] at hstep; linarith [hloglogℓ]
-  -- combine: log D ≤ C' * (8 log ℓ) * (2 loglog ℓ) = 16 C' log ℓ loglog ℓ
   have hlogDle : Real.log D ≤ 16 * C' * Real.log ℓ * Real.log (Real.log ℓ) := by
     have hlogDnn : (0:ℝ) ≤ Real.log D := Real.log_nonneg hDR1
     calc Real.log D ≤ C' * (h:ℝ) * Real.log h := hlogD
@@ -683,7 +1154,6 @@ theorem powerful_count_rate :
           have hhnn : (0:ℝ) ≤ (h:ℝ) := by positivity
           have hloglognn : (0:ℝ) ≤ Real.log (Real.log ℓ) := by linarith [hloglogℓ]
           have hlogℓnn : (0:ℝ) ≤ Real.log ℓ := by linarith
-          -- C'·h·logh ≤ C'·(8logℓ)·(2 loglogℓ)
           have e1 : C' * (h:ℝ) * Real.log h ≤ C' * (8 * Real.log ℓ) * Real.log h := by
             apply mul_le_mul_of_nonneg_right _ hloghnn
             exact mul_le_mul_of_nonneg_left hhle hC'pos.le
@@ -693,64 +1163,62 @@ theorem powerful_count_rate :
             positivity
           linarith [e1, e2]
       _ = 16 * C' * Real.log ℓ * Real.log (Real.log ℓ) := by ring
-  -- ===== log q bound (via standalone lemma) =====
-  have hlogq : Real.log q ≤ 2 * (ℓ:ℝ) * Real.log (17 * (D:ℝ)^2) := by
+  -- log q bound (general κ)
+  have hlogq : Real.log q ≤ 2 * (ℓ:ℝ) * Real.log (Kc * (D:ℝ)^2) := by
     have hSdvd : ∀ d ∈ S, 2 ≤ d ∧ d ≤ D := by
       intro d hd
       obtain ⟨hdvd, hd1, _⟩ := hSprop d hd
       exact ⟨by omega, Nat.le_of_dvd (by omega) hdvd⟩
-    have hqbound' : q ≤ ∏ i : S, ⌈((1:ℝ)/(16*(D:ℝ)*Real.sqrt (i:ℕ)))⁻¹⌉₊ := by
+    have hqbound' : q ≤ ∏ i : S,
+        ⌈((1:ℝ)/(2 ^ (κ + 1) * (κ : ℝ) * (D:ℝ)*(i:ℕ) ^ ((1:ℝ)/(κ:ℝ))))⁻¹⌉₊ := by
       convert hqbound using 2
-    have := log_q_bound D hD S hSdvd q hq1 hqbound'
+    have := log_q_bound_general κ hκ D hD S hSdvd q hq1 hqbound'
     rw [hScard] at this
-    calc Real.log q ≤ ((2 * ℓ : ℕ) : ℝ) * Real.log (17 * (D:ℝ)^2) := this
-      _ = 2 * (ℓ:ℝ) * Real.log (17 * (D:ℝ)^2) := by push_cast; ring
-  -- ===== combine into overall size bound on log n =====
+    calc Real.log q ≤ ((2 * ℓ : ℕ) : ℝ) * Real.log (Kc * (D:ℝ)^2) := by
+            rw [hKcdef]; exact this
+      _ = 2 * (ℓ:ℝ) * Real.log (Kc * (D:ℝ)^2) := by push_cast; ring
+  -- combine into overall size bound on log n
   have hlogDnn : (0:ℝ) ≤ Real.log D := Real.log_nonneg hDR1
   have hloglogℓnn : (0:ℝ) ≤ Real.log (Real.log ℓ) := by linarith [hloglogℓ]
   have hprod90 : (90:ℝ) ≤ Real.log ℓ * Real.log (Real.log ℓ) := by
     nlinarith [hℓlog, hloglogℓ, hlogℓpos]
-  -- log(17 D^2) = log 17 + 2 log D ≤ logℓloglogℓ + 2·16C'·logℓloglogℓ
-  have hlog17D : Real.log (17 * (D:ℝ)^2)
-      ≤ (1 + 32 * C') * (Real.log ℓ * Real.log (Real.log ℓ)) := by
-    have heq : Real.log (17 * (D:ℝ)^2) = Real.log 17 + 2 * Real.log D := by
-      rw [Real.log_mul (by norm_num) (by positivity), Real.log_pow]; push_cast; ring
-    have hlog17 : Real.log 17 ≤ 90 := by
-      have := Real.log_le_sub_one_of_pos (show (0:ℝ) < 17 by norm_num); linarith
+  have hPnn : (0:ℝ) ≤ Real.log ℓ * Real.log (Real.log ℓ) := by positivity
+  have hP1 : (1:ℝ) ≤ Real.log ℓ * Real.log (Real.log ℓ) := by linarith [hprod90]
+  -- log(Kc·D^2) = log Kc + 2 log D ≤ |log Kc|·P + 2·16C'·P
+  have hlogKcD : Real.log (Kc * (D:ℝ)^2)
+      ≤ (|Real.log Kc| + 32 * C') * (Real.log ℓ * Real.log (Real.log ℓ)) := by
+    have heq : Real.log (Kc * (D:ℝ)^2) = Real.log Kc + 2 * Real.log D := by
+      rw [Real.log_mul (by positivity) (by positivity), Real.log_pow]; push_cast; ring
     rw [heq]
-    have h1 : Real.log 17 ≤ Real.log ℓ * Real.log (Real.log ℓ) := le_trans hlog17 hprod90
+    have h1 : Real.log Kc ≤ |Real.log Kc| * (Real.log ℓ * Real.log (Real.log ℓ)) := by
+      calc Real.log Kc ≤ |Real.log Kc| := le_abs_self _
+        _ = |Real.log Kc| * 1 := by ring
+        _ ≤ |Real.log Kc| * (Real.log ℓ * Real.log (Real.log ℓ)) := by
+            apply mul_le_mul_of_nonneg_left hP1 (abs_nonneg _)
     have h2 : 2 * Real.log D ≤ 32 * C' * (Real.log ℓ * Real.log (Real.log ℓ)) := by
-      have := hlogDle
       nlinarith [hlogDle]
     nlinarith [h1, h2]
-  -- log n = log D + log q
   have hncast : ((n:ℕ):ℝ) = (D:ℝ) * (q:ℝ) := by rw [hndef]; push_cast; ring
   have hlogn : Real.log n = Real.log D + Real.log q := by
     rw [hncast, Real.log_mul (by positivity) (by positivity)]
-  have hℓRpos' : (0:ℝ) < (ℓ:ℝ) := hℓRpos
   have hsize : Real.log n ≤ Cbig * (ℓ:ℝ) * Real.log ℓ * Real.log (Real.log ℓ) := by
     rw [hlogn]
-    -- log D ≤ 16C'·P ≤ 16C'·ℓ·P  (since ℓ ≥ 1)
     have hDpart : Real.log D ≤ 16 * C' * (ℓ:ℝ) * (Real.log ℓ * Real.log (Real.log ℓ)) := by
-      have hPnn : (0:ℝ) ≤ Real.log ℓ * Real.log (Real.log ℓ) := by positivity
       calc Real.log D ≤ 16 * C' * (Real.log ℓ * Real.log (Real.log ℓ)) := by
             nlinarith [hlogDle]
         _ ≤ 16 * C' * (ℓ:ℝ) * (Real.log ℓ * Real.log (Real.log ℓ)) := by
             nlinarith [hPnn, hC'pos, hℓR1]
-    -- log q ≤ 2ℓ·log(17D^2) ≤ 2ℓ·(1+32C')·P
-    have hqpart : Real.log q ≤ 2 * (1 + 32 * C') * (ℓ:ℝ) * (Real.log ℓ * Real.log (Real.log ℓ)) := by
-      have hPnn : (0:ℝ) ≤ Real.log ℓ * Real.log (Real.log ℓ) := by positivity
-      calc Real.log q ≤ 2 * (ℓ:ℝ) * Real.log (17 * (D:ℝ)^2) := hlogq
-        _ ≤ 2 * (ℓ:ℝ) * ((1 + 32 * C') * (Real.log ℓ * Real.log (Real.log ℓ))) := by
-            apply mul_le_mul_of_nonneg_left hlog17D (by positivity)
-        _ = 2 * (1 + 32 * C') * (ℓ:ℝ) * (Real.log ℓ * Real.log (Real.log ℓ)) := by ring
-    -- combine; Cbig = 100C'+100 ≥ 16C' + 2(1+32C') = 80C'+2
-    have hPnn : (0:ℝ) ≤ Real.log ℓ * Real.log (Real.log ℓ) := by positivity
-    have hcoeff : 16 * C' + 2 * (1 + 32 * C') ≤ Cbig := by rw [hCbigdef]; nlinarith [hC'pos]
+    have hqpart : Real.log q
+        ≤ 2 * (|Real.log Kc| + 32 * C') * (ℓ:ℝ) * (Real.log ℓ * Real.log (Real.log ℓ)) := by
+      calc Real.log q ≤ 2 * (ℓ:ℝ) * Real.log (Kc * (D:ℝ)^2) := hlogq
+        _ ≤ 2 * (ℓ:ℝ) * ((|Real.log Kc| + 32 * C') * (Real.log ℓ * Real.log (Real.log ℓ))) := by
+            apply mul_le_mul_of_nonneg_left hlogKcD (by positivity)
+        _ = 2 * (|Real.log Kc| + 32 * C') * (ℓ:ℝ) * (Real.log ℓ * Real.log (Real.log ℓ)) := by ring
+    have hcoeff : 16 * C' + 2 * (|Real.log Kc| + 32 * C') ≤ Cbig := by
+      rw [hCbigdef]; nlinarith [hC'pos, abs_nonneg (Real.log Kc)]
     nlinarith [hDpart, hqpart, hPnn, hℓRpos, mul_le_mul_of_nonneg_right hcoeff
       (mul_nonneg hℓRpos.le hPnn)]
-  -- ===== generic finishing step at index N =====
-  -- exp(exp 1) ≤ 30
+  -- finishing step
   have hee : Real.exp (Real.exp 1) ≤ 30 := by
     have h1 : Real.exp 1 ≤ 3 := by
       have := Real.exp_one_lt_d9; linarith
@@ -763,54 +1231,56 @@ theorem powerful_count_rate :
             pow_le_pow_left₀ hpos.le Real.exp_one_lt_d9.le 3
           nlinarith [this]
   have hfinish : ∀ N : ℕ, B < N → N ≤ n → 2 * ℓ ≤ N + 1 →
-      ℓ ≤ ((Finset.Ioo (N^2) ((N+1)^2)).filter (fun m => KFull 2 m)).card →
+      ℓ ≤ ((Finset.Ioo (N^κ) ((N+1)^κ)).filter (fun m => KFull κ m)).card →
       ∃ n : ℕ, B < n ∧
         c * Real.log n / (Real.log (Real.log n) * Real.log (Real.log (Real.log n)))
-          ≤ ((Finset.Ioo (n^2) ((n+1)^2)).filter (fun m => KFull 2 m)).card := by
+          ≤ ((Finset.Ioo (n^κ) ((n+1)^κ)).filter (fun m => KFull κ m)).card := by
     intro N hNB hNn hNℓ hcount
     refine ⟨N, hNB, ?_⟩
     set X : ℝ := Real.log N with hXdef
-    -- N ≥ 2ℓ - 1 ≥ ... ; need log N ≥ exp(exp 1) and ≤ Cbig·...
     have hNpos : 0 < N := by omega
     have hNR1 : (1:ℝ) ≤ (N:ℝ) := by exact_mod_cast hNpos
-    -- log N ≥ log ℓ ≥ 30 :  N+1 ≥ 2ℓ so N ≥ 2ℓ - 1 ≥ ℓ (since ℓ ≥ 1)
     have hNgeℓ : (ℓ:ℝ) ≤ (N:ℝ) := by
       have : ℓ ≤ N := by omega
       exact_mod_cast this
     have hXge : (30:ℝ) ≤ X := by
       rw [hXdef]; exact le_trans hℓlog (Real.log_le_log hℓRpos hNgeℓ)
     have hXee : Real.exp (Real.exp 1) ≤ X := le_trans hee hXge
-    -- X ≤ log n ≤ Cbig·ℓ·logℓ·loglogℓ
     have hXlen : X ≤ Real.log n := by
       rw [hXdef]; exact Real.log_le_log (by exact_mod_cast hNpos) (by exact_mod_cast hNn)
     have hXub : X ≤ Cbig * (ℓ:ℝ) * Real.log ℓ * Real.log (Real.log ℓ) := le_trans hXlen hsize
     have hinv' := hinv ℓ X hℓℓ₀ hXee hXub
-    -- goal LHS = c*X/(logX*loglogX); note log N = X
     have hgoaleq : c * Real.log N / (Real.log (Real.log N) * Real.log (Real.log (Real.log N)))
         = c * X / (Real.log X * Real.log (Real.log X)) := by rw [hXdef]
     rw [hgoaleq]
     calc c * X / (Real.log X * Real.log (Real.log X)) ≤ (ℓ:ℝ) := hinv'
-      _ ≤ ((Finset.Ioo (N^2) ((N+1)^2)).filter (fun m => KFull 2 m)).card := by
+      _ ≤ ((Finset.Ioo (N^κ) ((N+1)^κ)).filter (fun m => KFull κ m)).card := by
           exact_mod_cast hcount
-  -- ===== dispatch via pigeonhole =====
-  have hnleq : n ≤ n := le_refl n
+  -- dispatch via pigeonhole
   rcases h_pig with hhi | hlo
-  · -- Shi side: N = n
-    apply hfinish n (by omega) (le_refl n) (by omega)
+  · apply hfinish n (by omega) (le_refl n) (by omega)
     refine le_trans hhi ?_
-    convert window_card_bound D q hD Shi _ _ _ _ using 2
+    apply window_card_bound_general κ D q hκ hD Shi
     · exact fun p hp => (hSprop p (Finset.filter_subset _ _ hp)).2.2
     · exact fun p hp => (h_placement p (Finset.filter_subset _ _ hp)).1
     · refine fun p hp => ⟨?_, (h_placement p (Finset.mem_filter.mp hp).1).2.1⟩
       have := (Finset.mem_filter.mp hp).2; rw [hndef] at this ⊢; exact this
-  · -- Slo side: N = n-1, window (n-1)^2..n^2 = (N)^2..(N+1)^2
-    have hn1 : (n - 1) + 1 = n := by omega
+  · have hn1' : (n - 1) + 1 = n := by omega
     apply hfinish (n - 1) (by omega) (by omega) (by omega)
-    have hwin : Finset.Ioo ((n-1)^2) (((n-1)+1)^2) = Finset.Ioo ((n-1)^2) (n^2) := by rw [hn1]
+    have hwin : Finset.Ioo ((n-1)^κ) (((n-1)+1)^κ) = Finset.Ioo ((n-1)^κ) (n^κ) := by rw [hn1']
     rw [hwin]
     refine le_trans hlo ?_
-    convert window_card_bound D q hD Slo _ _ _ _ using 2
+    apply window_card_bound_general κ D q hκ hD Slo
     · exact fun p hp => (hSprop p (Finset.filter_subset _ _ hp)).2.2
     · exact fun p hp => (h_placement p (Finset.filter_subset _ _ hp)).1
     · refine fun p hp => ⟨?_, (h_placement p (Finset.mem_filter.mp hp).1).2.1⟩
       have := (Finset.mem_filter.mp hp).2; rw [hndef] at this ⊢; exact this
+
+
+/-- The $\kappa=2$ case (Erdős Problem #942): the powerful-number rate, as a corollary of the
+general theorem. -/
+theorem powerful_count_rate :
+    ∃ c : ℝ, 0 < c ∧ ∀ B : ℕ, ∃ n : ℕ, B < n ∧
+      c * Real.log n / (Real.log (Real.log n) * Real.log (Real.log (Real.log n)))
+        ≤ ((Finset.Ioo (n ^ 2) ((n + 1) ^ 2)).filter (fun m => KFull 2 m)).card :=
+  powerful_count_rate_general 2 (by norm_num)

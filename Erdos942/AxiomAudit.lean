@@ -26,4 +26,6 @@ Expected output: every theorem depends only on `propext`, `Classical.choice`,
 #print axioms squarefree_many_divisors         -- 2^h − 1 squarefree divisors
 #print axioms rate_inversion                   -- inversion of the size bound
 #print axioms log_primorial_le                 -- log(primorial) ≪ h log h
-#print axioms powerful_count_rate              -- h(n) ≫ log n/(loglog n · logloglog n) i.o.
+#print axioms powerful_count_rate              -- κ=2 case (Erdős #942)
+#print axioms powerful_count_rate_general      -- Theorem 1.1, all fixed κ≥2
+#print axioms placement_kfull_window_general   -- general-κ window placement

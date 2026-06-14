@@ -41,7 +41,15 @@ $h_2(n)>(\log n)^{c-o(1)}$ infinitely often.
 De Koninck and Luca \cite{DeLu04} proved $h_2(n)>\frac9{20}(\log n/\log\log n)^{1/3}$ for
 infinitely many $n$; De Koninck, Luca and Shparlinski \cite{DKLS05} extended this to every fixed
 $\kappa\ge2$ (indeed uniformly in $\kappa=\kappa(N)$ growing slowly); we are not aware of a previous
-improvement of these lower bounds. We prove:
+improvement of these lower bounds.
+
+A related line of work studies the \emph{distribution} of $h_\kappa$ rather than its maximal order.
+Shiu \cite{Shiu80} proved that for each fixed $\ell$ the set of $n$ for which $(n^2,(n+1)^2)$ contains
+exactly $\ell$ non-square powerful integers has a positive asymptotic density, and Xiong and Zaharescu
+\cite{XZ11} extended this to $\kappa$-full integers between successive $\kappa$th powers (recently
+Narumi and Tachiya \cite{NT25} treated adjacent such intervals). These are fixed-$\ell$ density
+statements; they do not bound $h_\kappa(n)$ for $\ell$ growing with $n$, which is the regime studied
+here. We prove:
 
 \begin{theorem}\label{thm:main}
 For every fixed $\kappa\ge2$ there is $c_\kappa>0$ such that
@@ -158,19 +166,20 @@ Letting $\ell\to\infty$ produces infinitely many such $N$.\qed
 
 \begin{remark}
 The construction is completely explicit and was verified computationally in small cases. For
-$\kappa=2$, $h=2$, using all three nontrivial divisors $2,3,6$ of $D=6$: the smallest admissible $q$ is $485$, giving $N=2909$,
-and indeed two powerful numbers lie in $(2909^2,2910^2)$. For $h=3$ ($D=30$, all seven divisors
+$\kappa=2$, $h=2$, $D=6$: a small search finds $q=485$, giving $N=2909$, and two of the constructed
+powerful numbers lie in $(2909^2,2910^2)$. For $h=3$ ($D=30$, all seven divisors
 $2,3,5,6,10,15,30$): a lattice-reduction search finds $q$ with about $26$ decimal digits for which
 five of the seven constructed numbers lie in $(n^2,(n+1)^2)$ (and two in the lower interval).
-For $\kappa=2$, Theorem~\ref{thm:main} has been formalized and machine-checked in Lean~4/Mathlib,
-with no \texttt{sorry} and only the standard axioms. The development certifies the simultaneous box
-principle, the $\kappa$-fullness and distinctness of the constructed numbers $d_jD^2r_j^2$ (including
-the instance $8467200=3\cdot6^2\cdot280^2$ and $8468064=6\cdot6^2\cdot198^2$, both powerful and both
-in $(2909^2,2910^2)$), the window placement, the count $2^{\omega(D)}-1$ of squarefree divisors of the
-primorial, and the size bound $\log\!\prod_{i<h}p_i\ll h\log h$ --- which uses the Chebyshev lower
-bound $\pi(x)\gg x/\log x$ to bound the $h$th prime by $O(h\log h)$ --- together with the pigeonhole
-count and the final inversion, yielding $c\,\log n/(\log\log n\,\log\log\log n)\le h_2(n)$ for
-infinitely many $n$. The certificate is available at \url{https://github.com/scottdhughes/erdos942}.
+Theorem~\ref{thm:main} has been formalized and machine-checked in Lean~4/Mathlib, for every fixed
+$\kappa\ge2$, with no \texttt{sorry} and only the standard axioms. The development certifies the
+simultaneous box principle, the $\kappa$-fullness and distinctness of the constructed numbers
+$d_jD^\kappa r_j^\kappa$ (the smallest case $\kappa=2$, $D=6$ places $8467200=3\cdot6^2\cdot280^2$ and
+$8468064=6\cdot6^2\cdot198^2$ in $(2909^2,2910^2)$), the window placement, the count $2^{\omega(D)}-1$
+of squarefree divisors of the primorial, and the size bound $\log\!\prod_{i<h}p_i\ll h\log h$ --- which
+uses the Chebyshev lower bound $\pi(x)\gg x/\log x$ to bound the $h$th prime by $O(h\log h)$ --- together
+with the pigeonhole count and the final inversion, yielding $c_\kappa\,\log n/(\log\log n\,\log\log\log n)
+\le h_\kappa(n)$ for infinitely many $n$. The certificate is available at
+\url{https://github.com/scottdhughes/erdos942}.
 \end{remark}
 
 \begin{remark}
@@ -182,6 +191,11 @@ beyond Dirichlet's for the specific algebraic vector $(d_j^{-1/\kappa})_j$, or a
 construction.
 \end{remark}
 
+\section*{Use of AI}
+Claude Opus 4.8, Codex (GPT-5.5), and Harmonic's Aristotle were used in the preparation of this work.
+All Lean-formalized results are verified by the Lean kernel and depend only on the standard axioms, and
+the author has checked the mathematics and the cited literature and takes responsibility for all claims.
+
 \begin{thebibliography}{9}
 \bibitem{BG58} P.~Bateman and E.~Grosswald, On a theorem of Erd\H{o}s and Szekeres,
 \emph{Illinois J. Math.} \textbf{2} (1958), 88--98.
@@ -191,6 +205,12 @@ construction.
 \emph{Acta Arith.} \textbf{114} (2004), 149--157.
 \bibitem{DKLS05} J.-M. De~Koninck, F.~Luca and I.~E. Shparlinski, Powerful numbers in short
 intervals, \emph{Bull. Austral. Math. Soc.} \textbf{71} (2005), 11--16.
+\bibitem{Shiu80} P.~Shiu, On the number of square-full integers between successive squares,
+\emph{Mathematika} \textbf{27} (1980), 171--178.
+\bibitem{XZ11} M.~Xiong and A.~Zaharescu, $k$-full integers between successive $k$th powers,
+\emph{Indag. Math. (N.S.)} \textbf{22} (2011), 77--86.
+\bibitem{NT25} S.~Narumi and Y.~Tachiya, On the number of $k$-full integers between three
+successive $k$th powers, arXiv:2512.07438 (2025).
 \end{thebibliography}
 
 \bigskip
