@@ -1,10 +1,22 @@
 \documentclass[11pt]{article}
-\usepackage[margin=1.15in]{geometry}
-\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=1in]{geometry}
 \usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
-\input{macros}
 
-\title{Many powerful numbers between consecutive powers}
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}{Proposition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{corollary}{Corollary}
+\newtheorem{remark}{Remark}
+\theoremstyle{definition}
+
+\DeclareMathOperator{\Nm}{N}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\Q}{\mathbb{Q}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\norm}[1]{\lVert #1 \rVert}
+
+\title{Powerful numbers between consecutive squares}
 \author{Scott D. Hughes}
 \date{\today}
 
@@ -12,205 +24,327 @@
 \maketitle
 
 \begin{abstract}
-Let $\kappa\ge2$ and let $h_\kappa(n)$ denote the number of $\kappa$-full integers in the open
-interval $(n^\kappa,(n+1)^\kappa)$. De Koninck and Luca, and De Koninck--Luca--Shparlinski, proved
-that $h_\kappa(n)\ge(\log n)^{1/3+o(1)}$ for infinitely many $n$. We show by a refinement of their
-method --- replacing a self-referential approximation condition by a fixed-tolerance application of
-Dirichlet's theorem, and choosing the auxiliary squarefree numbers as the divisors of a primorial ---
-that for every fixed $\kappa\ge2$,
-\[
-  h_\kappa(n)\ \gg_\kappa\ \frac{\log n}{\log\log n\,\log\log\log n}
-\]
-for infinitely many $n$. In particular, in Erd\H{o}s's question whether
-$h_2(n)\asymp(\log n)^{c\pm o(1)}$, any admissible exponent satisfies $c\ge1$.
+Let $h(n)$ be the number of powerful integers in $(n^2,(n+1)^2)$. We record two complementary bounds.
+On the lower side we prove a \emph{frequency} (counting) bound, uniform as $V\to\infty$: there are effective
+constants $c,C>0$ with $\#\{n\le x:h(n)\ge V\}\ge x\exp(-CV\log(2V)\log\log(3V))$ whenever
+$V^2\log(2V)\log\log(3V)\le c\log x$, so in particular $\#\{n\le x:h(n)\ge V\}\ge x^{1-o(1)}$ for
+$2\le V\le(\log x)^{1/2-\varepsilon}$. On the upper side we record $h(n)\ll_\varepsilon n^{6/25+\varepsilon}$,
+improving the elementary $n^{2/5}$ and the recorded unconditional $O(n/\log n)$. The construction underlying
+the lower bound is that of De Koninck--Luca--Shparlinski with the standard primorial modulus and is not
+claimed new; the upper bound is an application of the classical integer-points-close-to-a-curve method of
+Swinnerton-Dyer and Filaseta--Trifonov, whose only novelty is the explicit worst-case ($\theta=0$) statement.
+The new mathematical point is the reduction of the frequency question to simultaneous equidistribution of the
+multiquadratic directions $\{1/\sqrt d\}$, made effective by a Liouville bound. The elementary and algebraic
+core of the lower bound is formalized in Lean~4/Mathlib. Both sides leave a gap to the conjectured
+$(\log n)^{1+o(1)}$, governed in each case by an equidistribution input beyond current technology.
 \end{abstract}
 
 \section{Introduction}
+A positive integer is \emph{powerful} (squarefull) if every prime dividing it does so to power at least
+two. Let $h(n)=\#\{\text{powerful }m: n^2<m<(n+1)^2\}$. (Erd\H{o}s's formulation counts the left endpoint
+$n^2$; our open-interval normalization differs by exactly one, as $n^2$ is always powerful, which is
+immaterial for the estimates below.) Throughout, $\norm x$ denotes the distance from $x\in\R$ to the nearest
+integer, $\norm a_\infty=\max_j|a_j|$, and $e(t)=e^{2\pi it}$. Erd\H{o}s asked for the order of $h(n)$ and,
+in the notation of the question, conjectured a constant $c$ with $h(n)\le(\log n)^{c+o(1)}$ for all $n$ and
+$h(n)\ge(\log n)^{c-o(1)}$ infinitely often, $c=1$ being the natural guess \cite{Erdos76,Erdos942}.
 
-An integer $m\ge1$ is \emph{$\kappa$-full} (for $\kappa=2$, \emph{powerful} or \emph{squarefull})
-if $p^\kappa\mid m$ for every prime $p\mid m$. Since the number of powerful integers up to $x$ is
-$\sim\frac{\zeta(3/2)}{\zeta(3)}\sqrt x$ \cite{BG58}, the interval $(n^2,(n+1)^2)$ contains on
-average about $\frac{\zeta(3/2)}{\zeta(3)}-1\approx1.17$ powerful numbers besides none being a
-perfect square. Erd\H{o}s asked (see \cite[Problem \#942]{BloomErdos}) for the maximal order of
-\[
-  h_\kappa(n):=\#\{m\in(n^\kappa,(n+1)^\kappa):\ m\ \text{is }\kappa\text{-full}\},
-\]
-and in particular whether there is a constant $c>0$ with $h_2(n)<(\log n)^{c+o(1)}$ for all $n$ and
-$h_2(n)>(\log n)^{c-o(1)}$ infinitely often.
+\emph{Lower bounds, infinitely often.} De Koninck--Luca \cite{DeLu04} proved
+$h(n)\gg(\log n/\log\log n)^{1/3}$ for infinitely many $n$; De Koninck--Luca--Shparlinski \cite{DLS} extended
+the method to $\kappa$-full integers in $(n^\kappa,(n+1)^\kappa)$, with exponent $1/3+o(1)$; Blomer (recorded
+in \cite[Appendix~A]{MSY}) improved the exponent to $1/2$. Applying Dirichlet's theorem directly and taking
+the auxiliary modulus to be a primorial sharpens the infinitely-often exponent further to $1-o(1)$, so that
+any admissible $c$ above satisfies $c\ge1$; this is a folklore optimization of the same construction (the
+primorial choice goes back to Ramanujan), recorded by the author at \cite{Erdos942}, which we do not claim as
+new and mention only for context, as it is not used below.
 
-De Koninck and Luca \cite{DeLu04} proved $h_2(n)>\frac9{20}(\log n/\log\log n)^{1/3}$ for
-infinitely many $n$; De Koninck, Luca and Shparlinski \cite{DKLS05} extended this to every fixed
-$\kappa\ge2$ (indeed uniformly in $\kappa=\kappa(N)$ growing slowly); we are not aware of a previous
-improvement of these lower bounds.
+\emph{Distribution, fixed $\ell$.} Shiu \cite{Shiu}, and Xiong--Zaharescu \cite{XZ} for higher powers, proved
+that the density $\delta_\ell=\operatorname{dens}\{n:h(n)=\ell\}$ exists for each fixed $\ell$, with
+generating function $\sum_\ell\delta_\ell z^\ell=\prod_\lambda(1+(z-1)/\lambda)$ over an explicit set;
+Narumi--Tachiya \cite{NT} treat consecutive intervals. These results are not uniform in $\ell$ and give no
+information on $\#\{n\le x:h(n)\ge V\}$ when $V=V(x)\to\infty$.
 
-A related line of work studies the \emph{distribution} of $h_\kappa$ rather than its maximal order.
-Shiu \cite{Shiu80} proved that for each fixed $\ell$ the set of $n$ for which $(n^2,(n+1)^2)$ contains
-exactly $\ell$ non-square powerful integers has a positive asymptotic density, and Xiong and Zaharescu
-\cite{XZ11} extended this to $\kappa$-full integers between successive $\kappa$th powers (recently
-Narumi and Tachiya \cite{NT25} treated adjacent such intervals). These are fixed-$\ell$ density
-statements; they do not bound $h_\kappa(n)$ for $\ell$ growing with $n$, which is the regime studied
-here. We prove:
+\emph{Upper bounds.} The unconditional worst-case bounds in the literature are short-interval bounds: De
+Koninck--Luca--Shparlinski \cite{DLS} and Chan \cite{Chan} give $O(y/\log y)$ powerful numbers in an interval
+of length $y$, which at $y\asymp\sqrt x$ (our case, $x=n^2$) is $O(n/\log n)$; an $n^{1/2}$-type bound holds
+only under the $abc$ conjecture \cite[Thm.~2]{DLS}. Sawin observed \cite{Erdos942} that the elementary
+estimate $h(n)\ll n^{2/5}$ follows from the representation of powerful numbers as $a^2b^3$. The distribution
+of squarefull numbers in short intervals of length $x^{1/2+\theta}$ with $\theta>0$ has been studied
+intensively in the \emph{asymptotic} regime \cite{Shiu,FT94,HT96,Tri02}, the current record being
+$\theta>19/154$ \cite{Tri02}; but the \emph{worst-case} count at the critical length $y\asymp\sqrt x$
+($\theta=0$) does not appear to have been recorded.
+
+We supply a frequency lower bound (Theorem~\ref{thm:main}), and record the upper bound that the standard
+near-curve technology yields at the critical length (Theorem~\ref{thm:upper}).
 
 \begin{theorem}\label{thm:main}
-For every fixed $\kappa\ge2$ there is $c_\kappa>0$ such that
+There are absolute, effectively computable constants $c,C>0$ such that the following holds. Let
+$H(V;x)=\#\{n\le x:h(n)\ge V\}$. If $x$ is large and $2\le V$ and
+$V^2\log(2V)\log\log(3V)\le c\log x$, then
 \[
-  h_\kappa(n)\ \ge\ c_\kappa\,\frac{\log n}{\log\log n\,\log\log\log n}
+  H(V;x)\ \ge\ x\exp\!\bigl(-C\,V\log(2V)\log\log(3V)\bigr).
 \]
-for infinitely many positive integers $n$.
 \end{theorem}
 
-Thus any exponent $c$ as in Erd\H{o}s's question satisfies $c\ge1$. The proof refines the method of
-\cite{DeLu04,DKLS05} in two ways. First, those papers impose on the common denominator $q$ a
-self-referential approximation condition ($|\alpha_j-r_j/q|\le q^{-1-1/2\ell}$ for all $j$, with $q$
-minimal), whose analysis requires Roth's theorem and yields $\log n\asymp\ell^3\log\ell$ for $\ell$
-constructed $\kappa$-full numbers; but the placement of the constructed numbers in the target
-interval only requires the \emph{fixed} tolerance $\|q\alpha_j\|\le c/(Dd_j^{1/\kappa})$, which
-Dirichlet's theorem supplies directly with $\log q\ll\ell\log(D^{2})$, and Roth's theorem is not
-needed. Second, the auxiliary squarefree numbers $d_j$ need not be the first $2\ell$ squarefree
-integers with $D=\prod_jd_j$: it suffices that each $d_j$ divides $D$, so choosing $D$ to be a
-primorial and the $d_j$ its squarefree divisors reduces $\log D$ from $\Theta(\ell\log\ell)$ to
-$O(\log\ell\log\log\ell)$, and the available upper bound for $\log n$ to $O_\kappa(\ell\log\ell\log\log\ell)$.
+\begin{corollary}\label{cor:half}
+For every fixed $\varepsilon>0$, $H(V;x)\ge x^{1-o(1)}$ uniformly for $2\le V\le(\log x)^{1/2-\varepsilon}$.
+\end{corollary}
+
+\begin{theorem}\label{thm:upper}
+For every $\varepsilon>0$, $h(n)\ll_\varepsilon n^{6/25+\varepsilon}$.
+\end{theorem}
+
+To the author's knowledge Theorem~\ref{thm:main} is the first counting lower bound for $h(n)$ valid as
+$V\to\infty$; the existing distribution results are for fixed $\ell$. Theorem~\ref{thm:upper} is not a new
+theorem in method: it is an application of the integer-points-close-to-a-curve technology of Swinnerton-Dyer
+\cite{SD} and Filaseta--Trifonov \cite{FT96,Tri98}; we record it because the literature optimized the
+asymptotic ($\theta>0$) regime and did not state the worst-case exponent, and because it answers the question
+of how far Sawin's elementary $n^{2/5}$ can be pushed by classical means (\S\ref{sec:floor}).
+
+\section{The construction and an exact one-sided window criterion}
+Let $D=p_1\cdots p_h$ be the product of the first $h$ primes and let $d_1,\dots,d_\ell$ ($\ell=2^h-1$) be the
+squarefree divisors of $D$ exceeding $1$. For $q\ge1$ put $n=Dq$, and for each $d=d_j$ set
+\[
+  \alpha_d=d^{-1/2},\qquad r_d=\lceil q\alpha_d\rceil,\qquad m_d=d(Dr_d)^2 .
+\]
+
+\emph{Powerfulness.} Each $m_d=dD^2r_d^2$ is powerful: a prime dividing $r_d$ occurs through $r_d^2$ to
+exponent $\ge2$; a prime dividing $d$ also divides $D$, hence occurs in $dD^2$ to exponent $\ge3$; a prime
+dividing $D$ but not $d$ occurs in $D^2$ to exponent $\ge2$. Distinct $d$ give distinct $m_d$, since the
+squarefree kernel of $m_d$ is exactly $d$.
+
+\begin{lemma}\label{lem:window}
+For $d>1$, $q/\sqrt d$ is irrational, so $\eta_d:=r_d-q/\sqrt d\in(0,1)$ and $\eta_d=1-\{q/\sqrt d\}$. With
+$t_d=D\sqrt d\,\eta_d$,
+\[
+  m_d-n^2=D^2\bigl(dr_d^2-q^2\bigr)=2nt_d+t_d^2,
+\]
+and hence
+\[
+  n^2<m_d<(n+1)^2 \iff 2nt_d+t_d^2<2n+1 \iff t_d<1 \iff \Bigl\{\tfrac{q}{\sqrt d}\Bigr\}>1-\tfrac1{D\sqrt d}.
+\]
+\end{lemma}
+\begin{proof}
+$m_d-n^2=D^2(q+\sqrt d\,\eta_d)^2-D^2q^2=2D^2q\sqrt d\,\eta_d+D^2d\eta_d^2=2nt_d+t_d^2$. As
+$(n+1)^2-n^2=2n+1$ and $t_d\ge0$, $2nt_d+t_d^2<2n+1\iff t_d<1$; and $t_d<1\iff\eta_d<1/(D\sqrt d)\iff
+\{q/\sqrt d\}>1-1/(D\sqrt d)$.
+\end{proof}
+
+The ceiling $r_d=\lceil q\alpha_d\rceil$ gives a clean one-sided criterion with no tie or side ambiguity.
+
+\section{Reduction to a box-hit count}
+Put $\delta_d=1/(D\sqrt d)$, $\alpha=(d^{-1/2})_{d\mid D,d>1}\in[0,1)^\ell$, and
+$B=\prod_{d\mid D,d>1}(1-\delta_d,1)\subset[0,1)^\ell$. By Lemma~\ref{lem:window}, if $q\alpha\bmod1\in B$ then
+$(n^2,(n+1)^2)$ contains the $\ell$ distinct powerful integers $m_d$, so $h(Dq)\ge\ell$. Hence, for
+$Q=\lfloor x/D\rfloor$,
+\[
+  \#\{n\le x:h(n)\ge\ell\}\ \ge\ \#\{q\le Q: q\alpha\bmod1\in B\}.
+\]
+Since each prime of $D$ divides exactly half of its $2^h$ divisors, $\prod_{d\mid D,d>1}d=D^{(\ell+1)/2}$, so
+\[
+  \operatorname{vol}(B)=\prod_{d\mid D,d>1}\frac1{D\sqrt d}=D^{-\ell}\Bigl(\prod_{d}d\Bigr)^{-1/2}=D^{-(5\ell+1)/4}.
+\]
+
+\section{A multiquadratic Liouville bound}
+\begin{lemma}\label{lem:liouville}
+For $a\in\Z^\ell\setminus\{0\}$ with $H=\norm{a}_\infty$, $\norm{a\cdot\alpha}\ge A^{-1}H^{-\ell}$, where
+$A=D(3D\ell)^\ell$.
+\end{lemma}
+\begin{proof}
+$\gamma:=D(a\cdot\alpha)=\sum_{d}a_d(D/d)\sqrt d$ is an algebraic integer of
+$K=\Q(\sqrt{p_1},\dots,\sqrt{p_h})$, $[K:\Q]=2^h=\ell+1$. Let $m$ be the nearest integer to $a\cdot\alpha$.
+Then $\gamma-Dm$ is a nonzero algebraic integer (nonzero because $\{1\}\cup\{\sqrt d:d\mid D,\,d>1\}$ is
+$\Q$-linearly independent, so $a\cdot\alpha\notin\Z$), whence $|\Nm_{K/\Q}(\gamma-Dm)|\ge1$. With $S=\sum_d d^{-1/2}\le
+\ell/\sqrt2$ and $|m|\le HS+\tfrac12$, every conjugate satisfies
+$|\sigma(\gamma-Dm)|\le\sum_d|a_d|(D/d)\sqrt d+D|m|\le HDS+D(HS+\tfrac12)\le3HD\ell=:M$. Separating the
+identity embedding from the other $\ell$ gives $1\le|\gamma-Dm|\,M^\ell$, so
+$\norm{a\cdot\alpha}=|\gamma-Dm|/D\ge D^{-1}(3D\ell)^{-\ell}H^{-\ell}$.
+\end{proof}
+The exponent is $\ell$, not $2^\ell$: the field is generated by $h=\log_2(\ell+1)$ square roots, so its degree
+is $\ell+1$. The bound is fully effective.
+
+\section{An effective discrepancy estimate}\label{sec:disc}
+\begin{proposition}\label{prop:disc}
+There is an absolute $C_0>0$ such that for every $Q\ge3$ the star-discrepancy of $(q\alpha)_{q\le Q}$ in
+$[0,1)^\ell$ satisfies $D_Q^\ast\le C_0^\ell\,D\ell\,\log(2Q)\,Q^{-1/(\ell+1)}$. Consequently there is an
+absolute $C_1>0$ such that if $\log Q\ge C_1\,\ell^2\log(3D)$ then
+$\#\{q\le Q:q\alpha\bmod1\in B\}\ge\tfrac12\,Q\operatorname{vol}(B)$.
+\end{proposition}
+\begin{proof}
+By the Erd\H{o}s--Tur\'an--Koksma inequality \cite{DT}, for every integer $R\ge2$,
+\[
+  D_Q^\ast\le C^\ell\Bigl(\tfrac1R+\sum_{0<\norm a_\infty\le R}\tfrac1{r(a)}\bigl|\tfrac1Q\textstyle\sum_{q\le Q}e(q\,a\cdot\alpha)\bigr|\Bigr),\quad r(a)=\textstyle\prod_j\max(1,|a_j|),
+\]
+with $C$ absolute. The geometric sum gives $|\sum_{q\le Q}e(q\,a\cdot\alpha)|\le1/(2\norm{a\cdot\alpha})$, and
+by Lemma~\ref{lem:liouville} $\norm{a\cdot\alpha}^{-1}\le D(3D\ell)^\ell R^\ell$ for $\norm a_\infty\le R$.
+Also $\sum_{\norm a_\infty\le R}r(a)^{-1}\le(1+2\sum_{m\le R}m^{-1})^\ell\le(C\log2R)^\ell$. Hence
+$D_Q^\ast\le C^\ell(R^{-1}+D(3D\ell)^\ell R^\ell(\log2R)^\ell/Q)$. Take
+$R=\lfloor(Q/[D(3D\ell)^\ell(\log2Q)^\ell])^{1/(\ell+1)}\rfloor$ when this is $\ge2$ (otherwise
+$D_Q^\ast\le1$ trivially, absorbed by enlarging $C_0$). Both terms are then
+$\ll C^\ell(D(3D\ell)^\ell(\log2Q)^\ell/Q)^{1/(\ell+1)}$, and since
+$(D(3D\ell)^\ell)^{1/(\ell+1)}\le3D\ell$, $D_Q^\ast\le C_0^\ell D\ell\log(2Q)Q^{-1/(\ell+1)}$. The box
+$B=\prod_j(1-\delta_j,1)$ is anchored at a corner, so by inclusion--exclusion the counting error is
+$\le2^\ell QD_Q^\ast$, giving $\#\{q\le Q:q\alpha\in B\}=Q\operatorname{vol}(B)+O(2^\ell QD_Q^\ast)$. This
+error is below $\tfrac12Q\operatorname{vol}(B)=\tfrac12QD^{-(5\ell+1)/4}$ once
+$2^\ell C_0^\ell D\ell\log(2Q)Q^{-1/(\ell+1)}\le\tfrac12D^{-(5\ell+1)/4}$, i.e.\ (taking logarithms) once
+$L/(\ell+1)\ge\tfrac{5\ell+5}4\log D+O(\ell\log\ell)+O(\log L)$, where $L=\log Q$. Since
+$L/(\ell+1)-O(\log L)$ is increasing in $L$ once $L\gg\ell$, it suffices to verify this at
+$L=C_1\ell^2\log(3D)$, which holds for an absolute $C_1$.
+\end{proof}
 
 \section{Proof of Theorem~\ref{thm:main}}
+Choose $h$ minimal with $2^h-1\ge V$ and set $\ell=2^h-1$, $D=p_1\cdots p_h$, so $V\le\ell\le2V+1$. By
+standard explicit (Chebyshev-type) prime estimates $\log D=\theta(p_h)\ll h\log(2h)\ll\log(2V)\log\log(3V)$,
+hence $\ell^2\log(3D)\ll V^2\log(2V)\log\log(3V)$. The hypothesis $V^2\log(2V)\log\log(3V)\le c\log x$ gives,
+for $c$ small, $\log(x/D)\ge C_1\ell^2\log(3D)$. Applying Proposition~\ref{prop:disc} with
+$Q=\lfloor x/D\rfloor\ge x/(2D)$,
+\[
+  H(V;x)\ge\#\{n\le x:h(n)\ge\ell\}\ge\tfrac12 Q\operatorname{vol}(B)\ge\tfrac{x}{4}\,D^{-(5\ell+5)/4}.
+\]
+Since $\ell\log D\ll V\log(2V)\log\log(3V)$, this is $\ge x\exp(-C\,V\log(2V)\log\log(3V))$.
+Corollary~\ref{cor:half} follows because $V\log(2V)\log\log(3V)=o(\log x)$ for
+$V\le(\log x)^{1/2-\varepsilon}$.\qed
 
-Fix $\kappa\ge2$ and a large integer $\ell$. Let $h$ be minimal with $2^h-1\ge2\ell$, so
-$h\asymp\log\ell$, and let
+\section{A conditional near-ceiling form}
+\begin{theorem}\label{thm:cond}
+Let $D=p_1\cdots p_h$, $\ell=2^h-1$, $Q=\lfloor x/D\rfloor$, and assume the simultaneous-equidistribution
+hypothesis $D_Q^\ast(\alpha)\le2^{-\ell-1}\operatorname{vol}(B)$. Then $\#\{n\le x:h(n)\ge\ell\}\ge
+\tfrac12\lfloor x/D\rfloor D^{-(5\ell+1)/4}$, which for $x\ge2D$ is
 \[
-  D=p_1p_2\cdots p_h
+  \#\{n\le x:h(n)\ge\ell\}\ \ge\ \tfrac14\,x\,D^{-(5\ell+5)/4}\ =\ x^{\,1-\frac{5\ell+5}{4}\frac{\log D}{\log x}+o(1)}.
 \]
-be the product of the first $h$ primes; by the prime number theorem
-$\log D\asymp h\log h\asymp\log\ell\,\log\log\ell$. Let $d_1<\dots<d_{2\ell}$ be any $2\ell$ of the
-$2^h-1$ squarefree divisors $d>1$ of $D$, and set $\alpha_j=d_j^{-1/\kappa}$, an irrational number,
-for $j=1,\dots,2\ell$.
+This is a positive power of $x$ while $\tfrac{5\ell}{4}\log D<(1-o(1))\log x$ (below the construction's height
+ceiling $\ell^\ast(x)\asymp\log x/(\log\log x\,\log\log\log x)$); it is $x^{1-o(1)}$ only for
+$\ell\log D=o(\log x)$, and at $\ell=\ell^\ast$ it degenerates to the infinitely-often statement.
+\end{theorem}
+\begin{proof}
+Under the hypothesis the corner-box counting error is $2^\ell QD_Q^\ast\le\tfrac12Q\operatorname{vol}(B)$, so
+$\#\{q\le Q:q\alpha\in B\}\ge\tfrac12Q\operatorname{vol}(B)=\tfrac12\lfloor x/D\rfloor D^{-(5\ell+1)/4}$, exactly as
+in the second half of Proposition~\ref{prop:disc}; the displayed forms then follow as in \S\ref{sec:disc}--\S6.
+\end{proof}
 
-\subsection*{Choice of $q$}
-By the box principle (Dirichlet's theorem on simultaneous approximation, with the per-coordinate
-tolerances $\delta_j:=\dfrac{1}{2^{\kappa+1}\kappa\,Dd_j^{1/\kappa}}$): subdividing
-$[0,1)^{2\ell}$ into $\prod_j\lceil\delta_j^{-1}\rceil$ boxes and considering the points
-$(\{t\alpha_1\},\dots,\{t\alpha_{2\ell}\})$ for $0\le t\le\prod_j\lceil\delta_j^{-1}\rceil$, there
-exist $t_1>t_2$ in the same box; $q:=t_1-t_2$ satisfies
-\begin{equation}\label{eq:dir}
-  1\le q\le\prod_{j=1}^{2\ell}\lceil\delta_j^{-1}\rceil
-  \le\bigl(4\kappa2^{\kappa}D^{1+1/\kappa}\bigr)^{2\ell},
-  \qquad
-  \|q\alpha_j\|\le\delta_j\quad(j=1,\dots,2\ell).
-\end{equation}
-In particular $\log q\ll_\kappa\ell\log D\ll\ell\log\ell\,\log\log\ell$.
+\section{The upper bound}\label{sec:upper}
+We deduce Theorem~\ref{thm:upper} from the integer-points-close-to-a-curve method. Every powerful $m$ has a
+unique representation $m=a^2b^3$ with $b$ squarefree. The method we use is the following.
 
-Let $r_j$ be the nearest integer to $q\alpha_j$ and $\varepsilon_j=q\alpha_j-r_j$, so
-$|\varepsilon_j|\le\delta_j$ and $\varepsilon_j\ne0$ (each $\alpha_j=d_j^{-1/\kappa}$ is irrational,
-as $d_j>1$ is squarefree). Note $r_j\ge1$: if $r_j=0$ then
-$\|q\alpha_j\|=q\alpha_j\ge\alpha_j=d_j^{-1/\kappa}>\delta_j$, a contradiction.
+\begin{lemma}[Filaseta--Trifonov {\cite[Thm.~4.1]{FT96}}]\label{lem:ft}
+Let $k\ge2$ be an integer and $s\in\Q\setminus\{-(k-1),\dots,k-1\}$. Let $f(u)=X/u^s$ with $X$ real
+independent of $u$, and suppose $N^s\le X$ and $\delta\le c_k N^{-(k-1)}$ for a sufficiently small
+$c_k=c_k(k,s)>0$. Then
+\[
+ \#\{u\in\Z\cap(N,2N]:\norm{f(u)}<\delta\}\ \ll_{k,s}\ X^{1/(2k+1)}N^{(k-s)/(2k+1)}+\delta\,X^{1/(6k+3)}N^{(6k^2+2k-s-1)/(6k+3)}.
+\]
+\end{lemma}
 
-\subsection*{The constructed numbers}
-Set $n=Dq$ and
-\[
-  m_j=d_j\,D^\kappa r_j^\kappa\qquad(j=1,\dots,2\ell).
-\]
-Each $m_j$ is $\kappa$-full: every prime of $d_j$ divides $D$, hence appears in $m_j$ with exponent
-at least $\kappa+1$, while primes of $D$ or of $r_j$ appear with exponent at least $\kappa$. The
-$m_j$ are pairwise distinct: comparing $p$-adic valuations modulo $\kappa$ in
-$d_ir_i^\kappa=d_jr_j^\kappa$ forces $v_p(d_i)=v_p(d_j)$ for all $p$, i.e.\ $d_i=d_j$.
+\begin{proof}[Proof of Theorem~\ref{thm:upper}]
+Write $m=a^2b^3$ with $b$ squarefree. If $n^2<m<(n+1)^2$ then $a^2b^3<(n+1)^2$, so $a<n+1$,
+$b<(n+1)^{2/3}$, and $\min(a,b)\le(n+1)^{2/5}$ (else $a,b>(n+1)^{2/5}$ give $a^2b^3>(n+1)^2$). We bound the
+contributions of $b\le(n+1)^{2/5}$ and of $a\le(n+1)^{2/5}$ separately; double counting only helps an upper
+bound, and the $O(1)$ terms with small parameter $\le2$ are discarded. Dropping the squarefree restriction on
+$b$ likewise only enlarges the count.
 
-\subsection*{Placement}
-Since $d_j\alpha_j^\kappa=1$,
+\emph{The $b$-aspect.} For fixed $b\ge2$, the condition $n^2<a^2b^3<(n+1)^2$ places $a$ in an interval
+$(nb^{-3/2},(n+1)b^{-3/2})$ of length $b^{-3/2}<1$; so there is at most one admissible $a$, and its existence
+forces $\norm{nb^{-3/2}}<b^{-3/2}$. Thus the $b\le(n+1)^{2/5}$ contribution is
+$\le\#\{b\le(n+1)^{2/5}:\norm{nb^{-3/2}}<b^{-3/2}\}$. Cover $b\in(2,(n+1)^{2/5}]$ by dyadic blocks
+$b\in(B,2B]$, $B=n^\beta$, $0<\beta\le\tfrac25+o(1)$, and apply Lemma~\ref{lem:ft} with $k=2$, $s=3/2$, $X=n$,
+$N=B$, $\delta\asymp B^{-3/2}$. The hypotheses hold: $s=3/2\notin\{-1,0,1\}$; $N^s=B^{3/2}\le n$ since
+$B\le n^{2/3}$; and $\delta\asymp B^{-3/2}\le c_2B^{-1}$ for $B\ge c_2^{-2}$ (boundedly many smaller $B$
+contribute $O(1)$). With $6k^2+2k-s-1=51/2$, the bound is
 \[
-  d_jr_j^\kappa=d_j(q\alpha_j-\varepsilon_j)^\kappa
-  =q^\kappa-\kappa q^{\kappa-1}d_j^{1/\kappa}\varepsilon_j+E_j,
-  \qquad
-  |E_j|\le 2^\kappa q^{\kappa-2}d_j^{2/\kappa}\varepsilon_j^2\,\kappa^2 ,
+  \ll n^{1/5}B^{1/10}+B^{-3/2}n^{1/15}B^{51/30}=n^{1/5+\beta/10}+n^{1/15+\beta/5},
 \]
-say, for $q$ large. Hence
-\[
-  m_j-n^\kappa=D^\kappa\bigl(d_jr_j^\kappa-q^\kappa\bigr)
-  =-\kappa D^\kappa q^{\kappa-1}d_j^{1/\kappa}\varepsilon_j+D^\kappa E_j .
-\]
-Write $M_j:=\kappa D^\kappa q^{\kappa-1}d_j^{1/\kappa}|\varepsilon_j|$ for the absolute value of the
-main term. With $|\varepsilon_j|\le\delta_j=\bigl(2^{\kappa+1}\kappa Dd_j^{1/\kappa}\bigr)^{-1}$ we
-get $M_j\le 2^{-(\kappa+1)}D^{\kappa-1}q^{\kappa-1}=2^{-(\kappa+1)}n^{\kappa-1}$, while the error is
-dominated termwise:
-\[
-  \frac{D^\kappa|E_j|}{M_j}
-  \le\frac{2^\kappa\kappa^2\,q^{\kappa-2}d_j^{2/\kappa}\varepsilon_j^2}
-         {\kappa\,q^{\kappa-1}d_j^{1/\kappa}|\varepsilon_j|}
-  =\frac{2^\kappa\kappa\,d_j^{1/\kappa}|\varepsilon_j|}{q}
-  \le\frac{1}{2Dq}\le\frac12 .
-\]
-Hence $\tfrac12M_j\le|m_j-n^\kappa|\le\tfrac32M_j$; since $\varepsilon_j\ne0$ this gives
-\[
-  0<|m_j-n^\kappa|\le\tfrac32\cdot2^{-(\kappa+1)}n^{\kappa-1}<n^{\kappa-1}
-  \le\min\bigl((n+1)^\kappa-n^\kappa,\ n^\kappa-(n-1)^\kappa\bigr),
-\]
-and the sign of $m_j-n^\kappa$ equals that of the main term, i.e.\ is opposite to that of
-$\varepsilon_j$. Therefore each $m_j$ lies in
-$(n^\kappa,(n+1)^\kappa)$ if $\varepsilon_j<0$, and in $((n-1)^\kappa,n^\kappa)$ if
-$\varepsilon_j>0$. By the pigeonhole principle, at least $\ell$ of the $2\ell$ numbers $m_j$ lie in
-a single one of these two intervals; setting $N=n$ in the first case and $N=n-1$ in the second,
-\[
-  h_\kappa(N)\ \ge\ \ell .
-\]
+the first term dominating for $\beta\le2/3$. Together with the trivial block bound $\#\{b\in(B,2B]\}\ll B=n^\beta$,
+the per-block count is $\ll\min(n^\beta,\,n^{1/5+\beta/10})$, which on $0<\beta\le\tfrac25+o(1)$ is maximized at
+$\beta=\tfrac25$, giving $n^{6/25+o(1)}$.
 
-\subsection*{Conclusion}
-Let $X=\log N$ and $f(x)=x/(\log x\,\log\log x)$; one checks $f$ is increasing for $x\ge16$. We have
-shown $X\le Y_\ell:=C_\kappa\,\ell\log\ell\,\log\log\ell$ with $C_\kappa\ge1$, and $X\to\infty$ as
-$\ell\to\infty$ (note $N\ge D-1$). Since $Y_\ell\ge\ell$, we have $\log Y_\ell\ge\log\ell$ and
-$\log\log Y_\ell\ge\log\log\ell$, so monotonicity gives, for $\ell$ large,
-\[
-  f(X)\ \le\ f(Y_\ell)
-  =\frac{C_\kappa\,\ell\,\log\ell\,\log\log\ell}{\log Y_\ell\,\log\log Y_\ell}
-  \ \le\ C_\kappa\,\ell,
-  \qquad\text{i.e.}\qquad
-  \ell\ \gg_\kappa\ \frac{\log N}{\log\log N\,\log\log\log N}.
-\]
-Letting $\ell\to\infty$ produces infinitely many such $N$.\qed
+\emph{The $a$-aspect.} For fixed $a$, $b$ lies in $((n/a)^{2/3},((n+1)/a)^{2/3})$, an interval of length
+$\asymp a^{-2/3}n^{-1/3}<1$, so at most one admissible $b$, requiring $\norm{(n/a)^{2/3}}\ll a^{-2/3}n^{-1/3}$.
+Cover $a\in(2,(n+1)^{2/5}]$ dyadically, $a\in(A,2A]$, $A=n^\alpha$, $0<\alpha\le\tfrac25+o(1)$, and apply
+Lemma~\ref{lem:ft} with $k=2$, $s=2/3$, $X=n^{2/3}$, $N=A$, $\delta\asymp A^{-2/3}n^{-1/3}$. Validity:
+$N^s=A^{2/3}\le n^{2/3}=X$ since $A\le n$; and $\delta A/c_2\asymp A^{1/3}n^{-1/3}\ll n^{-1/5}$ since
+$A\le(n+1)^{2/5}$, so $\delta\le c_2A^{-1}$ for $n$ large (boundedly many small $n$ are absorbed). The leading
+term is $X^{1/5}N^{(k-s)/5}=n^{2/15}A^{4/15}=n^{2/15+4\alpha/15}$, maximized at $\alpha=\tfrac25$, giving
+$n^{2/15+8/75}=n^{6/25+o(1)}$ (the second term is smaller).
 
-\begin{remark}
-The construction is completely explicit and was verified computationally in small cases. For
-$\kappa=2$, $h=2$, $D=6$: a small search finds $q=485$, giving $N=2909$, and two of the constructed
-powerful numbers lie in $(2909^2,2910^2)$. For $h=3$ ($D=30$, all seven divisors
-$2,3,5,6,10,15,30$): a lattice-reduction search finds $q$ with about $26$ decimal digits for which
-five of the seven constructed numbers lie in $(n^2,(n+1)^2)$ (and two in the lower interval).
-Theorem~\ref{thm:main} has been formalized and machine-checked in Lean~4/Mathlib, for every fixed
-$\kappa\ge2$, with no \texttt{sorry} and only the standard axioms. The development certifies the
-simultaneous box principle, the $\kappa$-fullness and distinctness of the constructed numbers
-$d_jD^\kappa r_j^\kappa$ (the smallest case $\kappa=2$, $D=6$ places $8467200=3\cdot6^2\cdot280^2$ and
-$8468064=6\cdot6^2\cdot198^2$ in $(2909^2,2910^2)$), the window placement, the count $2^{\omega(D)}-1$
-of squarefree divisors of the primorial, and the size bound $\log\!\prod_{i<h}p_i\ll h\log h$ --- which
-uses the Chebyshev lower bound $\pi(x)\gg x/\log x$ to bound the $h$th prime by $O(h\log h)$ --- together
-with the pigeonhole count and the final inversion, yielding $c_\kappa\,\log n/(\log\log n\,\log\log\log n)
-\le h_\kappa(n)$ for infinitely many $n$. The certificate is available at
-\url{https://github.com/scottdhughes/erdos942}.
+Summing over the $O(\log n)$ dyadic blocks in each aspect costs a factor $n^{o(1)}$. Hence
+$h(n)\ll_\varepsilon n^{6/25+\varepsilon}$.
+\end{proof}
+
+\section{The floor of the method, and the gap}\label{sec:floor}
+The exponent $6/25$ is attained at the symmetric scale $a\asymp b\asymp n^{2/5}$, where $m=a^2b^3$ has both
+factors at the critical size. There, in the normalization of Lemma~\ref{lem:ft}, the relevant window has
+half-width $\asymp n^{-3/5}$ and the curve has $|f''|\asymp n^{-2/5}$, so $6/25$ coincides with the
+on-curve lattice-point bound $N^{3/5}$ of Swinnerton-Dyer \cite{SD} at $N=n^{2/5}$.
+
+\begin{remark}\label{rem:floor}
+For the Filaseta--Trifonov/Swinnerton-Dyer route used here, $6/25$ is the best attainable exponent. A smaller
+exponent would require either the higher-order ($k\ge3$) cases of Lemma~\ref{lem:ft}, which are inadmissible
+at the symmetric scale because the window half-width $\asymp n^{-3/5}$ exceeds the admissibility threshold
+$c_kN^{-(k-1)}=c_3n^{-4/5}$ there; or an estimate of Bombieri--Pila on-curve quality
+($\ll N^{1/2+\varepsilon}$, which would give $n^{1/5}$) valid for a positive window half-width in the regime
+where the two curve scales coincide. Trifonov \cite{Tri98,Tri02} identifies exactly this --- extending
+Swinnerton-Dyer's on-curve count to the positive-width case at the symmetric scale $a\asymp b\asymp n^{2/5}$
+(both factors of size $\asymp X^{1/5}$ for squarefull numbers near $X=n^2$) --- as the open obstacle, and no
+such extension is known. Thus $6/25$ is the natural limit of present technology for the worst-case count,
+consistent with Sawin's expectation \cite{Erdos942} that arguments of this kind yield a power of $n$ rather
+than a power of $\log n$.
 \end{remark}
 
 \begin{remark}
-The bottleneck is the box principle: tolerance $e^{-\Theta(\log\ell\log\log\ell)}$ in dimension
-$2\ell$ costs $\log q\asymp\ell\log\ell\log\log\ell$, so Theorem~\ref{thm:main} may be close to the
-natural limit of this Dirichlet/primorial construction; removing the remaining
-$\log\log N\,\log\log\log N$ factor appears to require either simultaneous approximation of quality
-beyond Dirichlet's for the specific algebraic vector $(d_j^{-1/\kappa})_j$, or a different
-construction.
+Numerically $\max_{n\le10^7}h(n)=9$, attained at $n=524827$, and the growth of $\max_{n\le N}h(n)$ is
+consistent with $(\log N)^{1+o(1)}$. The gap between this conjectured truth and our $n^{6/25}$ on the upper
+side, and between it and the height ceiling $\ell^\ast(x)$ on the lower side (Theorem~\ref{thm:cond}), is in
+each case governed by an equidistribution input beyond current technology: a positive-width on-curve count on
+the upper side, and a lower bound for $\norm{\sum_d a_d\sqrt d}$ uniform in $\ell$ on the lower side. These
+appear related to the arithmetic of the conjectured bound $h(n)\le(\log n)^{1+o(1)}$, though that bound could
+fail for other reasons.
+\end{remark}
+
+\begin{remark}
+The lower-bound construction is a quantitative refinement of \cite{DeLu04,DLS} with the standard primorial
+modulus; the new point is not the construction but the extraction of a counting lower bound for $\#\{n\le
+x:h(n)\ge V\}$ uniform as $V\to\infty$, via an exact reduction to a box-hit count (\S2--\S3), a discrepancy
+criterion (Proposition~\ref{prop:disc}, second half), and the quantitative Erd\H{o}s--Tur\'an--Koksma input
+made effective by Lemma~\ref{lem:liouville}. The upper bound (\S\ref{sec:upper}) uses only classical
+near-curve technology and is recorded for the worst-case length, where the literature is silent.
+\end{remark}
+
+\begin{remark}
+The elementary core of the lower bound --- powerfulness of the $m_d$, the exact window criterion
+Lemma~\ref{lem:window}, distinctness, and the deduction $h(Dq)\ge\ell$ from a box hit --- is formalized in
+Lean~4/Mathlib with no \texttt{sorry} on the standard axioms $\{$\texttt{propext}, \texttt{Classical.choice},
+\texttt{Quot.sound}$\}$, as is the abstract Liouville norm mechanism. The multiquadratic Liouville inequality
+(Lemma~\ref{lem:liouville}) and the quantitative Erd\H{o}s--Tur\'an--Koksma input (Proposition~\ref{prop:disc})
+are each recorded as one explicit named axiom, since neither is presently in Mathlib (both are classical,
+provable mathematics). Thus the formalization verifies the algebraic and elementary core and the final counting
+deduction \emph{modulo} two stated classical inputs. The Lean development is available in the accompanying
+repository, built against Mathlib v4.30.0.
 \end{remark}
 
 \section*{Use of AI}
-Claude Opus 4.8, Codex (GPT-5.5), and Harmonic's Aristotle were used in the preparation of this work.
-All Lean-formalized results are verified by the Lean kernel and depend only on the standard axioms, and
-the author has checked the mathematics and the cited literature and takes responsibility for all claims.
+Claude (Opus~4.8), Codex (GPT-5.5) and Aristotle were used in this work, including for adversarial checking of
+the arguments and for the Lean formalization; the author has checked the mathematics and the cited literature
+and takes responsibility for all claims. The Lean kernel checks the elementary and algebraic core of the lower
+bound on the standard Mathlib axioms; the formal counting theorem is checked relative to the two explicit named
+axioms recorded above.
 
-\begin{thebibliography}{9}
-\bibitem{BG58} P.~Bateman and E.~Grosswald, On a theorem of Erd\H{o}s and Szekeres,
-\emph{Illinois J. Math.} \textbf{2} (1958), 88--98.
-\bibitem{BloomErdos} T.~F. Bloom, \emph{Erd\H{o}s Problem \#942},
-\url{https://www.erdosproblems.com/942}.
-\bibitem{DeLu04} J.-M. De~Koninck and F.~Luca, Sur la proximit\'e des nombres puissants,
-\emph{Acta Arith.} \textbf{114} (2004), 149--157.
-\bibitem{DKLS05} J.-M. De~Koninck, F.~Luca and I.~E. Shparlinski, Powerful numbers in short
-intervals, \emph{Bull. Austral. Math. Soc.} \textbf{71} (2005), 11--16.
-\bibitem{Shiu80} P.~Shiu, On the number of square-full integers between successive squares,
-\emph{Mathematika} \textbf{27} (1980), 171--178.
-\bibitem{XZ11} M.~Xiong and A.~Zaharescu, $k$-full integers between successive $k$th powers,
-\emph{Indag. Math. (N.S.)} \textbf{22} (2011), 77--86.
-\bibitem{NT25} S.~Narumi and Y.~Tachiya, On the number of $k$-full integers between three
-successive $k$th powers, arXiv:2512.07438 (2025).
+\begin{thebibliography}{99}
+\bibitem{Erdos76} P.~Erd\H{o}s, \emph{Problems and results on number theoretic properties of consecutive integers and related questions}, Proc.\ Fifth Manitoba Conf.\ on Numerical Math.\ (Univ.\ Manitoba, 1975), Congress.\ Numer.\ XVI, Utilitas Math., 1976, pp.~25--44.
+\bibitem{Erdos942} T.~F. Bloom (ed.), \emph{Erd\H{o}s Problem \#942}, \url{https://www.erdosproblems.com/942} (with comments by S.~D. Hughes, N.~Sothanaphan, T.~F. Bloom, and W.~Sawin).
+\bibitem{DeLu04} J.-M.~De Koninck and F.~Luca, \emph{Sur la proximit\'e des nombres puissants}, Acta Arith. \textbf{114} (2004), no.~2, 149--157.
+\bibitem{DLS} J.-M.~De Koninck, F.~Luca and I.~E.~Shparlinski, \emph{Powerful numbers in short intervals}, Bull. Austral. Math. Soc. \textbf{71} (2005), no.~1, 11--16.
+\bibitem{MSY} M.~Munsch, I.~E.~Shparlinski and K.~H.~Yau, \emph{Smooth squarefree and squarefull integers in arithmetic progressions}, Mathematika \textbf{66} (2020), no.~1, 56--70. (Appendix~A, due to V.~Blomer, improves the infinitely-often exponent from $1/3$ to $1/2$.)
+\bibitem{Shiu} P.~Shiu, \emph{On the number of square-full integers between successive squares}, Mathematika \textbf{27} (1980), no.~2, 171--178.
+\bibitem{XZ} M.~Xiong and A.~Zaharescu, \emph{$k$-full integers between successive $k$-th powers}, Indag. Math. (N.S.) \textbf{22} (2011), no.~1--2, 77--86.
+\bibitem{NT} S.~Narumi and Y.~Tachiya, \emph{On the number of $k$-full integers between three successive $k$-th powers}, arXiv:2512.07438 (2025).
+\bibitem{Chan} T.~H.~Chan, \emph{A note on powerful numbers in short intervals}, Bull. Aust. Math. Soc. \textbf{108} (2023), no.~1, 99--106.
+\bibitem{SD} H.~P.~F.~Swinnerton-Dyer, \emph{The number of lattice points on a convex curve}, J. Number Theory \textbf{6} (1974), 128--135.
+\bibitem{FT94} M.~Filaseta and O.~Trifonov, \emph{The distribution of squarefull numbers in short intervals}, Acta Arith. \textbf{67} (1994), no.~4, 323--333.
+\bibitem{FT96} M.~Filaseta and O.~Trifonov, \emph{The distribution of fractional parts with applications to gap results in number theory}, Proc. London Math. Soc. (3) \textbf{73} (1996), no.~2, 241--278.
+\bibitem{HT96} M.~N.~Huxley and O.~Trifonov, \emph{The square-full numbers in an interval}, Math. Proc. Cambridge Philos. Soc. \textbf{119} (1996), no.~2, 201--208.
+\bibitem{Tri98} O.~Trifonov, \emph{Integer points close to a smooth curve}, Serdica Math. J. \textbf{24} (1998), no.~3--4, 319--338.
+\bibitem{Tri02} O.~Trifonov, \emph{Lattice points close to a smooth curve and squarefull numbers in short intervals}, J. London Math. Soc. (2) \textbf{65} (2002), no.~2, 303--319.
+\bibitem{DT} M.~Drmota and R.~F.~Tichy, \emph{Sequences, Discrepancies and Applications}, Lecture Notes in Math. \textbf{1651}, Springer, 1997.
 \end{thebibliography}
 
 \bigskip

@@ -1,6 +1,8 @@
 import Erdos942.Core
 import Erdos942.Construction
 import Erdos942.Rate
+import Erdos942.Frequency
+import Erdos942.UpperBound
 
 /-!
 # Axiom audit
@@ -29,3 +31,35 @@ Expected output: every theorem depends only on `propext`, `Classical.choice`,
 #print axioms powerful_count_rate              -- κ=2 case (Erdős #942)
 #print axioms powerful_count_rate_general      -- Theorem 1.1, all fixed κ≥2
 #print axioms placement_kfull_window_general   -- general-κ window placement
+
+-- The frequency-lower-bound CORE (Frequency.lean)
+section FrequencyAudit
+open Erdos942.Frequency
+-- P1: elementary core — must be standard axioms only
+#print axioms P1a_powerful                     -- m = d·(D r)² is 2-full
+#print axioms window_iff_t_lt_one              -- EXACT abstract window iff (t < 1)
+#print axioms mOf_sub_sq_factored              -- identity m − n² = 2 n t + t²
+#print axioms window_upper_iff                 -- constructed m in upper window ⟺ t < 1
+#print axioms P1c_distinct                     -- distinct squarefree kernels ⟹ distinct m
+#print axioms P1d_count_ge                     -- the deduction h(n) ≥ |S|
+#print axioms hOf_ge_of_directions             -- ℓ ≤ h(n) from ℓ directions
+-- P2: algebraic Liouville core
+#print axioms liouville_from_nonzero_int_norm  -- Liouville mechanism (no extra axioms)
+#print axioms int_norm_ne_zero                 -- norm of nonzero elt is nonzero (Mathlib)
+#print axioms multiquadratic_liouville_bound   -- |γ| ≥ M^{-(2^h−1)} (uses the ONE axiom)
+-- P3 + headline conditional theorem
+#print axioms frequency_lower_bound            -- Theorem A, conditional on the analytic axiom
+end FrequencyAudit
+
+-- The upper bound CORE (UpperBound.lean)
+section UpperBoundAudit
+open Erdos942.UpperBound
+-- Elementary reduction — must be standard axioms only (NO sorryAx, NO ft_curve_count)
+#print axioms powerful_rep                     -- m powerful ⟹ m = a²b³, b squarefree, a,b ≥ 1
+#print axioms at_most_one_per_b                -- fixed b ≥ 2: ≤ one a in the window
+#print axioms at_most_one_per_a                -- fixed a ≥ 1: ≤ one b in the window
+#print axioms min_pow_le                       -- split: min a b ^ 5 ≤ (n+1)²
+#print axioms hUp_le_aspects                   -- reduction h(n) ≤ #bAspect + #aAspect
+-- Headline conditional theorem (standard 3 + the single analytic axiom ft_curve_count)
+#print axioms upper_bound                      -- h(n) ≤ C·n^{6/25+ε}, on ft_curve_count
+end UpperBoundAudit

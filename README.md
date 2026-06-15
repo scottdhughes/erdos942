@@ -1,76 +1,102 @@
-# Erdős Problem #942: a formalized lower bound
+# Erdős Problem #942: bounds on powerful numbers between consecutive squares
 
-A short note and an accompanying Lean 4 / Mathlib formalization, by S. D. Hughes.
+A note and an accompanying Lean 4 / Mathlib formalization, by Scott D. Hughes.
 
-A number `m` is *powerful* (squarefull) if every prime dividing `m` does so to
-the power at least `2`, and `κ`-full if to the power at least `κ`. Erdős
-Problem #942 (see erdosproblems.com/942) asks for the order of
-`h(n)`, the number of powerful numbers in the interval `(n², (n+1)²)`. The
-note proves that for every fixed `κ ≥ 2` there are infinitely many `n` with
-at least `c·log n / (log log n · log log log n)` many `κ`-full numbers in
-`(n^κ, (n+1)^κ)`, sharpening the exponent in the lower bound of
-De Koninck–Luca and De Koninck–Luca–Shparlinski from `1/3` to `1 − o(1)`.
+A number `m` is *powerful* (squarefull) if every prime dividing `m` does so to the
+power at least `2`. [Erdős Problem #942](https://www.erdosproblems.com/942) asks for
+the order of `h(n)`, the number of powerful numbers in the open interval
+`(n², (n+1)²)`; the conjectured truth is `(log n)^{1+o(1)}`.
 
-**This lower bound — the full Theorem 1.1, for every fixed `κ ≥ 2` — is
-formalized and machine-checked in Lean 4 / Mathlib** (`powerful_count_rate_general`
-below; `κ = 2` is Erdős #942 itself).
+This repository records **two complementary bounds** on `h(n)`, with their elementary
+cores machine-checked in Lean 4 / Mathlib:
 
-## The note
+- **Frequency lower bound.** `#{ n ≤ x : h(n) ≥ V } ≥ x^{1−o(1)}` uniformly for
+  `2 ≤ V ≤ (log x)^{1/2−ε}` (with an effective form for larger `V`). To the author's
+  knowledge this is the first counting bound valid as `V → ∞`; prior distribution
+  results are for fixed `ℓ`.
+- **Upper bound.** `h(n) ≪_ε n^{6/25+ε}`, sharpening the elementary `n^{2/5}` and the
+  recorded unconditional `O(n/log n)`.
 
-The 4-page write-up is in [`paper/erdos942.pdf`](paper/erdos942.pdf) (LaTeX
-source alongside it in [`paper/`](paper/)). It proves the quantitative bound
-`h_κ(n) ≫ log n / (log log n · log log log n)` infinitely often, for every fixed
-`κ ≥ 2`, and that statement is formalized in full (next section).
+Neither the lower-bound construction (De Koninck–Luca–Shparlinski, with the standard
+primorial modulus) nor the upper-bound method (the classical *integer points close to
+a curve* technology of Swinnerton-Dyer and Filaseta–Trifonov) is new. The
+contributions are the reduction of the frequency question to simultaneous
+equidistribution of the multiquadratic directions `{1/√d}` (made effective by a
+Liouville bound), and the explicit worst-case (`θ = 0`, length `≍ √x`) upper exponent,
+which the literature — having optimized the asymptotic `θ > 0` regime — did not record.
+Both sides leave a gap to the conjectured `(log n)^{1+o(1)}`, governed in each case by
+an equidistribution input beyond current technology.
+
+The infinitely-often lower bound `h(n) ≫ log n / (log log n · log log log n)` (the
+folklore sharpening of De Koninck–Luca–Shparlinski via Dirichlet + a primorial
+modulus) is **not new**; it is retained here as context, and its general-`κ`
+formalization remains in `Erdos942/Rate.lean`.
+
+## Papers
+
+- **Current (this work):** [`paper/main.pdf`](paper/main.pdf) — *Powerful numbers
+  between consecutive squares* (the two-sided result above).
+- **Original note (v1):** [`paper/erdos942.pdf`](paper/erdos942.pdf) — *Many powerful
+  numbers between consecutive powers* (the infinitely-often lower bound, general `κ`).
+  This is the version linked from the erdosproblems.com/942 forum and is kept here
+  unchanged; the `v0.1.0` tag is the corresponding repository snapshot.
 
 ## What is formalized
 
-Three layers, all with zero `sorry`, no `native_decide`, and standard axioms only
-(`propext`, `Classical.choice`, `Quot.sound`). Requires Mathlib `v4.30.0` (the
-Chebyshev lower bound `Chebyshev.pi_ge` it uses was added there).
+Every elementary and algebraic step below is checked with zero `sorry`, no
+`native_decide`, on the standard axioms `{propext, Classical.choice, Quot.sound}`
+(Mathlib `v4.30.0`). Three classical theorems that are **not presently in Mathlib**
+are recorded as explicit, documented axioms (listed at the end); each headline counting
+theorem is checked *relative to* exactly one of them.
 
-**1. The rate (`Erdos942/Rate.lean`).** The full quantitative lower bound — the
-complete Theorem 1.1, for every fixed `κ ≥ 2`, not merely unboundedness:
+### Lower side — the construction and the frequency bound
 
-| Theorem | Statement |
-|---|---|
-| `powerful_count_rate_general` | for every fixed `κ ≥ 2`, there is `c > 0` such that for infinitely many `n`, at least `c · log n / (log log n · log log log n)` many `κ`-full numbers lie in `(n^κ, (n+1)^κ)` |
-| `powerful_count_rate` | the `κ = 2` case (Erdős #942), as a corollary |
-
-Supporting lemmas in the same module: `placement_kfull_window_general` (the
-general-`κ` window placement), `nth_prime_upper` (the `h`-th prime is `O(h log h)`,
-via `Chebyshev.pi_ge`), `box_principle_quantitative` (simultaneous Dirichlet with
-the denominator bound), `squarefree_many_divisors` (a primorial with `h` prime
-factors has `2^h − 1` squarefree divisors `> 1`), `log_primorial_le`
-(`log ∏_{i<h} pᵢ ≪ h log h`), and `rate_inversion` (inverting the size bound).
-
-**2. The construction, qualitative form (`Erdos942/Construction.lean`).** The
-construction mechanism — the simultaneous Dirichlet box principle, the placement
-of the constructed numbers in a window between consecutive squares, and the
-pigeonhole assembly — packaged as unboundedness:
+**Rate / construction / arithmetic core** (`Erdos942/Rate.lean`,
+`Erdos942/Construction.lean`, `Erdos942/Core.lean`) — fully proved on standard axioms:
 
 | Theorem | Statement |
 |---|---|
-| `box_principle_simultaneous` | for reals `α i` and tolerances `δ i > 0` (finite `i`), some `q ≥ 1` has `‖q·α i‖ ≤ δ i` for all `i` |
-| `placement_kfull_window` | for `d ∣ D` squarefree, `d ≥ 2`, and `q` well-approximating `1/√d`, the number `d·D²·round(q/√d)²` is powerful and lies strictly in `((Dq−1)², (Dq)²)` or `((Dq)², (Dq+1)²)` |
-| `powerful_count_unbounded` | for every `ℓ` there is an `n` with at least `ℓ` powerful numbers strictly in `(n², (n+1)²)` |
+| `powerful_count_rate_general` | for every fixed `κ ≥ 2`, `c·log n/(log log n · log log log n)` many `κ`-full numbers in `(n^κ,(n+1)^κ)` for infinitely many `n` |
+| `powerful_count_rate` | the `κ = 2` case (Erdős #942) |
+| `box_principle_simultaneous` / `box_principle_quantitative` | simultaneous Dirichlet with the denominator bound |
+| `placement_kfull_window(_general)` | the constructed `d·D^κ·r^κ` is `κ`-full and lands in a window between consecutive powers |
+| `kfull_construction`, `construction_injective` | powerfulness (Lemma 2.1) and distinctness (Lemma 2.2) |
+| `log_primorial_le`, `nth_prime_upper` | `log ∏_{i<h} pᵢ ≪ h log h` via `Chebyshev.pi_ge` |
 
-`powerful_count_unbounded` gives `lim sup h(n) = ∞` constructively (via the box
-principle rather than Kronecker's theorem); `powerful_count_rate` strengthens
-this to the explicit rate.
+**Frequency** (`Erdos942/Frequency.lean`):
 
-**3. The arithmetic core (`Erdos942/Core.lean`).** The elementary facts the
-construction rests on, stated for general `κ`:
+| Item | Status |
+|---|---|
+| exact window criterion, powerfulness, distinctness, `h(Dq) ≥ ℓ` from a box hit | proved, standard axioms |
+| `liouville_from_nonzero_int_norm`, `int_norm_ne_zero` (the Liouville mechanism) | proved, standard axioms |
+| `multiquadratic_liouville_bound` (`‖a·α‖ ≥ M^{−ℓ}`) | proved **modulo** the axiom `multiquadratic_liouville` (`[K:ℚ]=2^h`) |
+| `frequency_lower_bound` (the frequency bound) | proved **modulo** the axiom `simultaneous_equidistribution_count` (Erdős–Turán–Koksma) |
 
-| Theorem | Statement | Note |
-|---|---|---|
-| `kfull_construction` | `d ∣ D` ⟹ `d · D^κ · r^κ` is `κ`-full | Lemma 2.1 |
-| `construction_injective` | `κ ≥ 2`, `d₁, d₂` squarefree, `d₁r₁^κ = d₂r₂^κ` ⟹ `d₁ = d₂` and `r₁ = r₂` | Lemma 2.2 |
-| `two_powerful_between_2909_2910` | two distinct powerful numbers lie strictly between `2909²` and `2910²` | Remark 2.1 |
+### Upper side — the reduction (`Erdos942/UpperBound.lean`)
 
-The last is the note's hand-checkable instance (`D = 6`, `q = 485`):
-`8467200 = 3·6²·280²` and `8468064 = 6·6²·198²`, both powerful, both in
-`(8462281, 8468100)`, derived through `kfull_construction` rather than by
-brute-force evaluation.
+| Theorem | Status |
+|---|---|
+| `powerful_rep` (`m = a²b³`, `b` squarefree) | proved, standard axioms |
+| `at_most_one_per_b`, `at_most_one_per_a` (≤1 admissible parameter per window) | proved, standard axioms |
+| `min_pow_le` (the split `min(a,b)^5 ≤ (n+1)²`) | proved, standard axioms |
+| `hUp_le_aspects` (the reduction inequality) | proved, standard axioms |
+| `upper_bound` (`h(n) ≪_ε n^{6/25+ε}`) | proved **modulo** the axiom `ft_curve_count` (Filaseta–Trifonov) |
+
+### The three classical axioms (not in Mathlib)
+
+Each is a classical, provable theorem, documented in place and reported by
+`Erdos942/AxiomAudit.lean`:
+
+1. `simultaneous_equidistribution_count` — the Erdős–Turán–Koksma discrepancy estimate
+   for the sequence `(q·α)` (Weyl sums + the ETK inequality).
+2. `multiquadratic_liouville` — `[ℚ(√p₁,…,√p_h):ℚ] = 2^h` and the `ℚ`-linear
+   independence of the `√d`, giving the Liouville exponent `ℓ` (CAS-verified).
+3. `ft_curve_count` — the Filaseta–Trifonov "integer points close to a curve" count
+   (PLMS (3) 73 (1996), Thm 4.1), applied dyadically; the worst block `a ≍ b ≍ n^{2/5}`
+   yields the `6/25` exponent.
+
+Everything else — both elementary cores, the Liouville mechanism, and the entire
+infinitely-often/rate development — is proved outright.
 
 ## Verifying
 
@@ -79,15 +105,14 @@ lake exe cache get
 lake build
 ```
 
-Toolchain: `leanprover/lean4:v4.30.0`, Mathlib pinned in `lake-manifest.json`.
-The build compiles every module with zero `sorry` and prints an axiom report
-(`Erdos942/AxiomAudit.lean`): every theorem above (the rate, the construction, and the arithmetic core) depends only on
-`propext`, `Classical.choice`, `Quot.sound`. No `native_decide` is used.
+Toolchain: `leanprover/lean4:v4.30.0`, Mathlib pinned in `lake-manifest.json`. The build
+compiles every module with zero `sorry`, no `native_decide`, and `Erdos942/AxiomAudit.lean`
+prints the axiom footprint of each theorem above.
 
 ## Related
 
-Formalizations for Erdős Problem #367 (powerful parts of consecutive
-integers) by the same author: [erdos367](https://github.com/scottdhughes/erdos367).
+Formalizations for Erdős Problem #367 (powerful parts of consecutive integers) by the
+same author: [erdos367](https://github.com/scottdhughes/erdos367).
 
 ## License
 
