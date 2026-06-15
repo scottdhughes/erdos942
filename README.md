@@ -109,6 +109,20 @@ Toolchain: `leanprover/lean4:v4.30.0`, Mathlib pinned in `lake-manifest.json`. T
 compiles every module with zero `sorry`, no `native_decide`, and `Erdos942/AxiomAudit.lean`
 prints the axiom footprint of each theorem above.
 
+## The empirical maximum
+
+The value `max_{n ≤ 10⁷} h(n) = 9` (first attained at `n = 524827`), quoted in the paper,
+is reproduced by [`scripts/h942_count.py`](scripts/h942_count.py) — pure-Python, exact
+integer arithmetic (no floats), self-testing against direct factorization:
+
+```sh
+python3 scripts/h942_count.py 10000000
+```
+
+It enumerates every powerful `m = a²b³` (`b` squarefree, `b ≥ 2`) with `m < (N+1)²`, buckets
+by `n = ⌊√m⌋`, cross-checks the counts against brute-force factorization for `n ≤ 3000`, and
+reports `max h(n)`, its argmax, and the full distribution.
+
 ## Related
 
 Formalizations for Erdős Problem #367 (powerful parts of consecutive integers) by the
