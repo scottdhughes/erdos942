@@ -3,6 +3,7 @@ import Erdos942.Construction
 import Erdos942.Rate
 import Erdos942.Frequency
 import Erdos942.UpperBound
+import Erdos942.GlobalCount
 
 /-!
 # Axiom audit
@@ -63,3 +64,16 @@ open Erdos942.UpperBound
 -- Headline conditional theorem (standard 3 + the single analytic axiom ft_curve_count)
 #print axioms upper_bound                      -- h(n) ≤ C·n^{6/25+ε}, on ft_curve_count
 end UpperBoundAudit
+
+-- The UNCONDITIONAL global count (GlobalCount.lean)
+section GlobalCountAudit
+open Erdos942.GlobalCount
+-- Elementary reduction and analytic bounds — must be standard axioms only
+#print axioms powerful_card_le_pair_card       -- #powerful ≤ #admissible pairs (a,b)
+#print axioms pair_card_le_sum                 -- #pairs ≤ ∑_b Nat.sqrt (x/b³)
+#print axioms term_le_telescope                -- 1/B^{3/2} ≤ 2/√(B-1) − 2/√B
+#print axioms sum_recip_le                     -- ∑_{b=1}^N 1/(b√b) ≤ 3 − 2/√N
+#print axioms sqrt_div_le                      -- Nat.sqrt(x/b³) ≤ √x · 1/(b√b)
+-- Headline UNCONDITIONAL theorem (standard 3 axioms only)
+#print axioms powerful_global_count            -- #{powerful m ≤ x} ≤ 3√x
+end GlobalCountAudit

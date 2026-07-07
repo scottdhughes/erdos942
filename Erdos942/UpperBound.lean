@@ -384,9 +384,9 @@ theorem hUp_le_aspects (n : ℕ) :
 
 /-- **The Filaseta–Trifonov curve-count input (AXIOM — classical, not in Mathlib).**
 
-This is Filaseta–Trifonov, "The distribution of squarefull numbers in short
-intervals" / "On gaps between squarefull numbers" (the "integer points close to a
-curve" method, Proc. London Math. Soc. (3) 73 (1996), Thm 4.1), applied dyadically.
+This is Filaseta–Trifonov, "The distribution of fractional parts with applications
+to gap results in number theory" (the "integer points close to a curve" method,
+Proc. London Math. Soc. (3) 73 (1996), 241–278, Theorem 7), applied dyadically.
 
 Counting the powerful `m ∈ (n², (n+1)²)` via the `m = a²b³` decomposition, the
 admissible small parameter (`b` in the `b`-aspect, `a` in the `a`-aspect, each

@@ -82,6 +82,23 @@ theorem is checked *relative to* exactly one of them.
 | `hUp_le_aspects` (the reduction inequality) | proved, standard axioms |
 | `upper_bound` (`h(n) ≪_ε n^{6/25+ε}`) | proved **modulo** the axiom `ft_curve_count` (Filaseta–Trifonov) |
 
+### Global count — unconditional (`Erdos942/GlobalCount.lean`)
+
+A complementary, fully **unconditional** bound on the *global* count of powerful
+numbers (over `[1,x]`, not per short interval), recorded because its elementary
+`a²b³` core is exactly the one already used above and it needs no axiom. It is a
+loose form of the classical asymptotic `#{powerful ≤ x} ∼ (ζ(3/2)/ζ(3))√x`
+(sharp constant `≈ 2.173`); it does **not** bear on the `h(n)` short-interval
+frontier.
+
+| Theorem | Status |
+|---|---|
+| `powerful_global_count` (`#{ m ≤ x : KFull 2 m } ≤ 3√x`) | proved, standard axioms (no `ft_curve_count`) |
+
+Proof: the `m ↦ (a,b)` injection from `powerful_rep`, fibered over `b` to give
+`#{powerful ≤ x} ≤ ∑_{b≥1} ⌊√(x/b³)⌋`, closed by an elementary telescoping
+`∑_{b≥1} b^{-3/2} ≤ 3`. Not presently in Mathlib.
+
 ### The three classical axioms (not in Mathlib)
 
 Each is a classical, provable theorem, documented in place and reported by
@@ -92,7 +109,7 @@ Each is a classical, provable theorem, documented in place and reported by
 2. `multiquadratic_liouville` — `[ℚ(√p₁,…,√p_h):ℚ] = 2^h` and the `ℚ`-linear
    independence of the `√d`, giving the Liouville exponent `ℓ` (CAS-verified).
 3. `ft_curve_count` — the Filaseta–Trifonov "integer points close to a curve" count
-   (PLMS (3) 73 (1996), Thm 4.1), applied dyadically; the worst block `a ≍ b ≍ n^{2/5}`
+   (PLMS (3) 73 (1996), Theorem 7), applied dyadically; the worst block `a ≍ b ≍ n^{2/5}`
    yields the `6/25` exponent.
 
 Everything else — both elementary cores, the Liouville mechanism, and the entire
